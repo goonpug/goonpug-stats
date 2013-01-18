@@ -4,7 +4,7 @@ goonpug-stats
 CS:GO stats daemon and web server
 
 GoonPUG-stats is intended to be used with the
-[GoonPUG](https://github.pmrowla.com/goonpug) sourcemod plugin.
+[GoonPUG](https://github.com/pmrowla/goonpug) sourcemod plugin.
 
 
 License
