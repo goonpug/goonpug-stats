@@ -11,5 +11,5 @@ License
 -------
 
 GoonPUG is distributed under the GNU General Public License version 3. See
-[LICENSE.md](https://github.com/pmrowla/goonpug-stats/blob/master/LICENSE.md)
+[COYPING.md](https://github.com/pmrowla/goonpug-stats/blob/master/COPYING.md)
 for more information.
