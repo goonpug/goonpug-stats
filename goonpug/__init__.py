@@ -16,9 +16,30 @@
 # along with GoonPUG.  If not, see <http://www.gnu.org/licenses/>.
 
 from __future__ import absolute_import
+import os
 from flask import Flask
+from flask.ext.sqlalchemy import SQLAlchemy
+from flask.ext.login import LoginManager
+from flask.ext.openid import OpenID
 
 
 app = Flask(__name__)
+
+app.config.from_object('goonpug.default_config')
+app.config.from_envvar('GOONPUG_CONFIG')
+
+app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql://%s:%s@%s:%d/%s' % (
+    app.config['MYSQL_USER'], app.config['MYSQL_PASSWORD'],
+    app.config['MYSQL_SERVER'], app.config['MYSQL_PORT'],
+    app.config['MYSQL_DATABASE'],)
+
+# DB stuff
+db = SQLAlchemy(app)
+
+# Login stuff
+login_manager = LoginManager()
+login_manager.setup_app(app)
+oid = OpenID(app)
+
 from . import models
 from . import views

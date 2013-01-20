@@ -1,0 +1,5 @@
+Flask
+Flask-SQLAlchemy
+MySQL-python
+Flask-OpenID
+Flask-Login

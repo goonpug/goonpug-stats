@@ -16,13 +16,31 @@
 # along with GoonPUG.  If not, see <http://www.gnu.org/licenses/>.
 
 from __future__ import absolute_import
-from flask.ext.sqlalchemy import SQLAlchemy
+from flask.ext.login import UserMixin
 
-from . import app
+from . import app, db
 
 
-app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql://goonpug_user:password1@localhost/goonpug'
-db = SQLAlchemy(app)
+ROLE_USER = 0
+ROLE_ADMIN = 1
+
+
+class User(db.Model, UserMixin):
+
+    id = db.Column(db.Integer, primary_key=True)
+    steam_id = db.Column(db.String(40))
+    nickname = db.Column(db.String(128))
+    role = db.Column(db.SmallInteger, default=ROLE_USER)
+    player_id = db.Column(db.Integer, db.ForeignKey('player.id'))
+
+    @staticmethod
+    def get_or_create(steam_id):
+        user = User.query.filter_by(steam_id=steam_id).first()
+        if user is None:
+            user = User()
+            user.steam_id = steam_id
+            db.session.add(user)
+        return user
 
 
 class Server(db.Model):
@@ -37,7 +55,7 @@ class Player(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(64))
-    steamid = db.Column(db.String(32), unique=True)
+    steam_id = db.Column(db.String(32), unique=True)
 
     def __init__(self, steamid, name):
         self.steamid = steamid
