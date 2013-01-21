@@ -64,6 +64,8 @@ class CsgoMatch(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     type = db.Column(db.SmallInteger)
+    start_time = db.Column(db.DateTime)
+    end_time = db.Column(db.DateTime)
     rounds = db.relationship('round', backref='csgo_match', lazy='dynamic')
     team_a = db.ForeignKey('team')
     team_b = db.ForeignKey('team')
@@ -82,14 +84,6 @@ pug_match_players = db.Table('pug_match_players',
     db.Column('match_id', db.Integer, db.ForeignKey('csgo_match.id')),
     db.Column('team', db.SmallInteger),
 )
-
-
-class Round(db.Model):
-
-    id = db.Column(db.Integer, primary_key=True)
-    match_id = db.Column(db.Integer, db.ForeignKey('csgo_match.id'))
-    period = db.Column(db.SmallInteger)
-    winning_team = db.Column(db.SmallInteger)
 
 
 frags = db.Table('frags',
@@ -113,3 +107,14 @@ player_rounds = db.Table('player_rounds',
     # if the player won 1vN, set this to N
     db.Column('won_1v', db.SmallInteger, default=0),
 )
+
+
+class Round(db.Model):
+
+    id = db.Column(db.Integer, primary_key=True)
+    match_id = db.Column(db.Integer, db.ForeignKey('csgo_match.id'))
+    period = db.Column(db.SmallInteger)
+    winning_team = db.Column(db.SmallInteger)
+    player_rounds = db.relationship(player_rounds, backref='round',
+                                    lazy='dynamic')
+    frags = db.relationship(frags, backref='round', lazy='dynamic')
