@@ -22,13 +22,3 @@ Bootstrap
 =========
 **Copyright (c) 2011 Twitter, Inc.**
 http://www.apache.org/licenses/LICENSE-2.0
-
-MooTools
-========
-**Copyright (c) 2006-2009 Valerio Proietti**
-http://mootools.net/license.txt
-
-Roar
-====
-**Copyright (c) 2008-2009 Harald Kirschner**
-http://digitarald.de/project/roar/#license
