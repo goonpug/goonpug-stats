@@ -22,7 +22,7 @@ from flask.ext.login import login_user, logout_user
 from werkzeug.urls import url_encode
 
 from . import app, db, oid, login_manager
-from .models import User, ROLE_USER, ROLE_ADMIN
+from .models import Player
 
 
 _steam_id_re = re.compile('steamcommunity.com/openid/id/(.*?)$')
@@ -55,7 +55,7 @@ def login():
 @oid.after_login
 def create_or_login(resp):
     match = _steam_id_re.search(resp.identity_url)
-    g.user = User.get_or_create(match.group(1))
+    g.user = User.get_or_create(int(match.group(1)))
     steam_data = get_steam_userinfo(g.user.steam_id)
     g.user.nickname = steam_data['personaname']
     db.session.commit()
