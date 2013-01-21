@@ -11,7 +11,6 @@
 
     <!-- Le styles -->
     <link href="{{ url_for('static', filename='css/bootstrap.css') }}" rel="stylesheet">
-    <link href="{{ url_for('static', filename='css/Roar.css') }}" rel="stylesheet">
     <style type="text/css">
       body {
         padding-top: 60px;
@@ -38,7 +37,6 @@
   </head>
 
   <body>
-
     <div class="navbar navbar-inverse navbar-fixed-top">
       <div class="navbar-inner">
         <div class="container">
@@ -51,7 +49,7 @@
           <div class="nav-collapse collapse">
               <p class="navbar-text pull-right">
               {% if g.user and g.user.is_authenticated() %}
-              Logged in as <a href="#" class="navbar-link">{{ g.user.nickname }}</a> (<a href="{{ url_for('logout') }}">Log out</a>)
+              Logged in as <a href="/player/{{ g.user.id }}" class="navbar-link">{{ g.user.nickname }}</a> (<a href="{{ url_for('logout') }}">Log out</a>)
               {% else %}
               <a href="{{ url_for('login') }}"><img src="http://cdn.steamcommunity.com/public/images/signinthroughsteam/sits_small.png" alt="Sign in through Steam" /></a>
               {% endif %}
@@ -65,6 +63,16 @@
   </div>
 
     <div class="container">
+    {% with messages = get_flashed_messages() %}
+    {% if messages %}
+    {% for message in messages %}
+    <div class="alert alert-info">
+        <a class="close" data-dismiss="alert" href="#">&times;</a>{{ message }}
+    </div>
+    {% endfor %}
+    </script>
+    {% endif %}
+    {% endwith %}
 
      {% block body %}
      {% endblock %}
@@ -72,7 +80,7 @@
       <hr>
 
       <footer>
-        <p>&copy; 2013 Peter Rowlands | Powered by Steam</p>
+      <p>Powered by <a href="https://github.com/pmrowla/goonpug-stats">GoonPUG</a> &copy; 2013 Peter Rowlands | Powered by Steam</p>
       </footer>
 
     </div><!--/.container-->
@@ -82,21 +90,5 @@
 <!-- Placed at the end of the document so the pages load faster -->
 <script src="//ajax.googleapis.com/ajax/libs/jquery/1.8.3/jquery.min.js"></script>
 <script src="{{ url_for('static', filename='js/bootstrap.js') }}"></script>
-<script src="{{ url_for('static', filename='js/mootools-1.2.5-core.js') }}"></script>
-<script src="{{ url_for('static', filename='js/Roar.js') }}"></script>
-    {% with messages = get_flashed_messages() %}
-    {% if messages %}
-    <script type="text/javascript">
-        window.addEvent('load', function() {
-            var flashes = new Roar({
-                position: 'lowerRight',
-                });
-            {% for message in messages %}
-            flashes.alert('', '{{ message }}');
-            {% endfor %}
-        });
-    </script>
-    {% endif %}
-    {% endwith %}
   </body>
 </html>

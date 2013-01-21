@@ -40,8 +40,8 @@ class Player(db.Model, UserMixin):
         if player is None:
             player = Player()
             player.steam_id = steam_id
-            db.session.add(user)
-        return user
+            db.session.add(player)
+        return player
 
 
 class Server(db.Model):
@@ -54,6 +54,13 @@ class Server(db.Model):
     db.UniqueConstraint('ip_address', 'port', name='uidx_address')
 
 
+match_players = db.Table('match_players',
+    db.Column('player_id', db.Integer, db.ForeignKey('player.id')),
+    db.Column('match_id', db.Integer, db.ForeignKey('csgo_match.id')),
+    db.Column('team', db.SmallInteger),
+)
+
+
 class CsgoMatch(db.Model):
 
     TYPE_PUG = 0
@@ -64,11 +71,21 @@ class CsgoMatch(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     type = db.Column(db.SmallInteger)
+    server = db.Column(db.Integer, db.ForeignKey('server.id'))
     start_time = db.Column(db.DateTime)
     end_time = db.Column(db.DateTime)
-    rounds = db.relationship('round', backref='csgo_match', lazy='dynamic')
+    map = db.Column(db.String(64))
+    rounds = db.relationship('Round', backref='csgo_match', lazy='dynamic')
     team_a = db.ForeignKey('team')
     team_b = db.ForeignKey('team')
+    players = db.relationship('Player', secondary=match_players,
+                              backref='matches')
+
+
+team_players = db.Table('team_players',
+    db.Column('player_id', db.Integer, db.ForeignKey('player.id')),
+    db.Column('team_id', db.Integer, db.ForeignKey('team.id')),
+)
 
 
 class Team(db.Model):
@@ -76,37 +93,35 @@ class Team(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     nickname = db.Column(db.String(64))
     tag = db.Column(db.String(16))
+    players = db.relationship('Player', secondary=team_players,
+                              backref='teams')
 
 
-# for PUGs we just keep track of who participated, not actual teams
-pug_match_players = db.Table('pug_match_players',
-    db.Column('player_id', db.Integer, db.ForeignKey('player.id')),
-    db.Column('match_id', db.Integer, db.ForeignKey('csgo_match.id')),
-    db.Column('team', db.SmallInteger),
-)
+class Frag(db.Model):
+
+    round_id = db.Column(db.Integer, db.ForeignKey('round.id'),
+                         primary_key=True)
+    victim = db.Column(db.Integer, db.ForeignKey('player.id'),
+                       primary_key=True)
+    fragger = db.Column(db.Integer, db.ForeignKey('player.id'))
+    weapon = db.Column(db.String(16), default=False)
+    headshot = db.Column(db.Boolean, default=False)
 
 
-frags = db.Table('frags',
-    db.Column('round_id', db.Integer, db.ForeignKey('round.id')),
-    db.Column('fragger', db.Integer, db.ForeignKey('player.id')),
-    db.Column('victim', db.Integer, db.ForeignKey('player.id')),
-    db.Column('weapon', db.String(16), default=False),
-    db.Column('headshot', db.Boolean, default=False),
-)
+class PlayerRound(db.Model):
 
-
-# Tracks everything but kills, which are tracked in the 'frags' table
-player_rounds = db.Table('player_rounds',
-    db.Column('player_id', db.Integer, db.ForeignKey('player.id')),
-    db.Column('round_id', db.Integer, db.ForeignKey('round.id')),
-    db.Column('assists', db.SmallInteger, default=0),
-    db.Column('dead', db.Boolean, default=False),
-    db.Column('damage', db.Integer, default=0),
-    db.Column('bomb_planted', db.Boolean, default=False),
-    db.Column('bomb_defused', db.Boolean, default=False),
+    player_id = db.Column(db.Integer, db.ForeignKey('player.id'),
+                          primary_key=True)
+    round_id = db.Column(db.Integer, db.ForeignKey('round.id'),
+                         primary_key=True)
+    assists = db.Column(db.SmallInteger, default=0)
+    dead = db.Column(db.Boolean, default=False)
+    damage = db.Column(db.Integer, default=0)
+    bomb_planted = db.Column(db.Boolean, default=False)
+    bomb_defused = db.Column(db.Boolean, default=False)
     # if the player won 1vN, set this to N
-    db.Column('won_1v', db.SmallInteger, default=0),
-)
+    won_1v = db.Column(db.SmallInteger, default=0)
+    rws = db.Column(db.Float, default=0.0)
 
 
 class Round(db.Model):
@@ -115,6 +130,6 @@ class Round(db.Model):
     match_id = db.Column(db.Integer, db.ForeignKey('csgo_match.id'))
     period = db.Column(db.SmallInteger)
     winning_team = db.Column(db.SmallInteger)
-    player_rounds = db.relationship(player_rounds, backref='round',
+    player_rounds = db.relationship('PlayerRound', backref='round',
                                     lazy='dynamic')
-    frags = db.relationship(frags, backref='round', lazy='dynamic')
+    frags = db.relationship('Frag', backref='round', lazy='dynamic')

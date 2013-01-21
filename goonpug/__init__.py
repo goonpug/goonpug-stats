@@ -41,5 +41,4 @@ login_manager = LoginManager()
 login_manager.setup_app(app)
 oid = OpenID(app)
 
-from . import models
-from . import views
+from . import models, views

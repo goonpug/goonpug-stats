@@ -1,0 +1,52 @@
+{% extends "base.html" %}
+{% block body %}
+{% if g.player %}
+<div class="row">
+    <div class="span2">
+        <p><strong>{{ g.player.nickname }}</strong></p>
+    </div>
+    <div class="span10">
+        <table class="table table-condensed table-bordered">
+            <thead>
+                <tr>
+                    <th>F</th>
+                    <th>A</th>
+                    <th>D</th>
+                    <th>BP</th>
+                    <th>BD</th>
+                    <th>3K</th>
+                    <th>4K</th>
+                    <th>5K</th>
+                    <th>1v2</th>
+                    <th>v3</th>
+                    <th>v4</th>
+                    <th>HSP</th>
+                    <th>ADR</th>
+                    <th>FPR</th>
+                    <th>RWS</th>
+                </tr>
+            </thead>
+            <tr>
+                <td>{{ g.stats.frags }}</td>
+                <td>{{ g.stats.assists }}</td>
+                <td>{{ g.stats.deaths }}</td>
+                <td>{{ g.stats.plants }}</td>
+                <td>{{ g.stats.defuses }}</td>
+                <td>{{ g.stats.triples }}</td>
+                <td>{{ g.stats.quads }}</td>
+                <td>{{ g.stats.aces }}</td>
+                <td>{{ g.stats.v2 }}</td>
+                <td>{{ g.stats.v3 }}</td>
+                <td>{{ g.stats.v4 }}</td>
+                <td>{{ g.stats.hsp }}</td>
+                <td>{{ g.stats.adr }}</td>
+                <td>{{ g.stats.fpr }}</td>
+                <td>{{ g.stats.rws }}</td>
+            </tr>
+        </table>
+    </div>
+</div>
+{% else %}
+<h3>No player matching that Steam ID</h3>
+{% endif %}
+{% endblock %}
