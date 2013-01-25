@@ -16,7 +16,7 @@ from daemon import Daemon
 
 from goonpug import db
 from goonpug.models import CsgoMatch, Round, Player, PlayerRound, Frag, \
-        match_players
+        match_players, Server
 
 
 class GoonPugParser(object):
@@ -42,7 +42,8 @@ class GoonPugParser(object):
             csgo_events.SwitchTeamEvent: self.handle_switch_team,
         }
         self._compile_regexes()
-        self.server = server_address
+        self.server = Server.get_or_create(server_address[0], server_address[1])
+        db.session.commit()
         self.reset_server_state()
 
     def _compile_regexes(self):
@@ -98,26 +99,35 @@ class GoonPugParser(object):
         self.frags = []
         self.player_rounds = {}
 
-    def _restart_match(self):
+    def _restart_match(self, timestamp):
         # TODO if there is a match in progress than we just want to reset everything
+        # If this match exists already, delete the existing one
+        match = db.session.query(CsgoMatch).filter_by(server_id=self.server.id,
+            start_time=timestamp).first()
+        if match:
+            db.session.delete(match)
         self.match = CsgoMatch()
         # we only support pugs right now
         self.match.type = CsgoMatch.TYPE_PUG
         self.match.map = self.map
+        self.match.server_id = self.server.id
+        self.match.start_time = timestamp
         db.session.add(self.match)
         db.session.commit()
         self.team_a = self.ts
         self.team_b = self.cts
         for steam_id in self.team_a:
             player = db.session.query(Player).filter_by(steam_id=steam_id).first()
-            match_players.insert().values(player_id=player,
-                                          match_id=self.match,
-                                          team=CsgoMatch.TEAM_A)
-        for steam_id in self.team_a:
+            db.session.execute(match_players.insert().values(
+                player_id=player.id,
+                match_id=self.match.id,
+                team=CsgoMatch.TEAM_A))
+        for steam_id in self.team_b:
             player = db.session.query(Player).filter_by(steam_id=steam_id).first()
-            match_players.insert().values(player_id=player,
-                                          match_id=self.match,
-                                          team=CsgoMatch.TEAM_B)
+            db.session.execute(match_players.insert().values(
+                player_id=player.id,
+                match_id=self.match.id,
+                team=CsgoMatch.TEAM_B))
         db.session.commit()
         self.period = 1
         self.round = None
@@ -126,11 +136,11 @@ class GoonPugParser(object):
         self.t_score = 0
         self.ct_score = 0
 
-    def _end_match(self):
+    def _end_match(self, event):
+        self.match.end_time = event.timestamp
         db.session.commit()
         self.match = None
         self.round = None
-        print 'end of match'
 
     def _commit_round(self):
         db.session.add(self.round)
@@ -161,7 +171,7 @@ class GoonPugParser(object):
         self.defuser = None
         self.planter = None
 
-    def _end_round(self):
+    def _end_round(self, event):
         rounds_played = self.t_score + self.ct_score
         if rounds_played == 0:
             self.period = 1
@@ -172,29 +182,31 @@ class GoonPugParser(object):
         # check for end of match conditions
         if self.period <= 2 and (self.t_score == 16 or self.ct_score == 16):
             # a team won in regulation
-            self._end_match()
+            self._end_match(event)
         elif rounds_played == 30 and self.match.type == CsgoMatch.TYPE_PUG:
             # match was a draw
-            self._end_match()
+            self._end_match(event)
         elif self.period > 2 and (self.t_score == 6 or self.t_score == 6):
             # a team won in OT
-            self._end_match()
+            self._end_match(event)
 
     def _sfui_notice(self, winning_team, defused=False, exploded=False):
         if winning_team == 'TERRORIST':
             team = self.ts
             if self.period % 2 == 0:
-                self.round.winning_team = Match.TEAM_A
+                self.round.winning_team = CsgoMatch.TEAM_A
             else:
-                self.round.winning_team = Match.TEAM_B
+                self.round.winning_team = CsgoMatch.TEAM_B
         else:
             team = self.cts
             if self.period % 2 == 0:
-                self.round.winning_team = Match.TEAM_B
+                self.round.winning_team = CsgoMatch.TEAM_B
             else:
-                self.round.winning_team = Match.TEAM_A
+                self.round.winning_team = CsgoMatch.TEAM_A
         team_damage = 0
         for steam_id in team:
+            if not self.player_rounds[steam_id].damage:
+                self.player_rounds[steam_id].damage = 0
             team_damage += self.player_rounds[steam_id].damage
         if defused or exploded:
             multi = 70.0
@@ -293,14 +305,13 @@ class GoonPugParser(object):
             self.last_restart = event.timestamp
             if self.lo3_count >= 3:
                 print 'Got LO3, resetting match: %s' % event
-                self._restart_match()
-                self.match.start_time = event.timestamp
+                self._restart_match(event.timestamp)
         elif event.action == 'Round_Start':
             if self.match:
                 self._start_round()
         elif event.action == 'Round_End':
             if self.match:
-                self._end_round()
+                self._end_round(event)
 
     def handle_round_end_team(self, event):
         print event
@@ -312,28 +323,25 @@ class GoonPugParser(object):
     def handle_kill(self, event):
         if not self.round:
             return
+        print event
         steam_id = event.player.steam_id.id64()
         target_id = event.target.steam_id.id64()
-        #print event
-        if self.player_rounds.has_key(target_id):
-            self.player_rounds[target_id].dead = True
-            if event.target.team == 'CT':
-                self.live_cts -= 1
-                if self.live_cts == 1:
-                    for steam_id in self.cts:
-                        if not self.player_rounds[steam_id].dead:
-                            self.v1[steam_id] = self.live_ts
-                            break
-            elif event.target.team == 'TERRORIST':
-                self.live_ts -= 1
-                if self.live_ts == 1:
-                    for steam_id in self.ts:
-                        if not self.player_rounds[steam_id].dead:
-                            self.v1[steam_id] = self.live_cts
-                            break
+        self.player_rounds[target_id].dead = True
+        if event.target.team == 'CT':
+            self.live_cts -= 1
+            if self.live_cts == 1:
+                for steam_id in self.cts:
+                    if not self.player_rounds[steam_id].dead:
+                        self.v1[steam_id] = self.live_ts
+                        break
+        elif event.target.team == 'TERRORIST':
+            self.live_ts -= 1
+            if self.live_ts == 1:
+                for steam_id in self.ts:
+                    if not self.player_rounds[steam_id].dead:
+                        self.v1[steam_id] = self.live_cts
+                        break
         fragger = Player.query.filter_by(steam_id=steam_id).first()
-        if not fragger:
-            print 'no such fragger: %s' % steam_id
         victim = Player.query.filter_by(steam_id=target_id).first()
         frag = Frag()
         frag.fragger = fragger.id
@@ -384,20 +392,28 @@ class GoonPugParser(object):
             self.ts.append(steam_id)
         else:
             return
-        if not self.match and not self.round:
+        if not self.match:
             return
-        if self.match and (steam_id not in self.team_a
-                           and steam_id not in self.team_b):
+        if steam_id not in self.team_a and steam_id not in self.team_b:
             if (event.new_team == 'TERRORIST' and (self.period % 2) == 1) \
                     or (event.new_team == 'CT' and (self.period % 2) == 0):
-                match_players.insert().values(player_id=player.id,
-                                              match_id=self.match.id,
-                                              team=CsgoMatch.TEAM_A)
-            elif (event.new_team == 'CT' and (self.period % 2) == 1) \
-                    or (event.new_team == 'TERRORIST' and (self.period % 2) == 0):
-                match_players.insert().values(player_id=player.id,
-                                              match_id=self.match.id,
-                                              team=CsgoMatch.TEAM_B)
+                self.team_a.append(steam_id)
+                db.session.execute(match_players.insert().values(
+                    player_id=player.id,
+                    match_id=self.match.id,
+                    team=CsgoMatch.TEAM_A))
+            else:
+                self.team_b.append(steam_id)
+                db.session.execute(match_players.insert().values(
+                    player_id=player.id,
+                    match_id=self.match.id,
+                    team=CsgoMatch.TEAM_B))
+        if not self.round:
+            return
+        if not self.player_rounds.has_key(steam_id):
+            player_round = PlayerRound()
+            player_round.player_id = player.id
+            self.player_rounds[player.steam_id] = player_round
 
 
 log_parsers = {}
@@ -456,9 +472,16 @@ def main():
     parser.add_argument('-s', action='store_true', dest='stdin',
                         help='read log entries from stdin instead of '
                               'listening on a network port')
+    parser.add_argument('--server', action='store', dest='server_address',
+                        help='server address (used with -s) in form of '
+                             'IP:PORT')
     args = parser.parse_args()
     if args.stdin:
-        log_parser = GoonPugParser(None)
+        if not args.server_address:
+            parser.error('No server address specified')
+        (host, port) = args.server_address.split(':', 1)
+        port = int(port)
+        log_parser = GoonPugParser((host, port))
         print "goonpugd: Reading from STDIN"
         while True:
             try:
@@ -468,7 +491,7 @@ def main():
             except KeyboardInterrupt:
                 sys.exit()
             except EOFError:
-                pass
+                sys.exit()
     else:
         daemon = GoonPugDaemon(args.pidfile, port=args.port)
         if not args.daemon:

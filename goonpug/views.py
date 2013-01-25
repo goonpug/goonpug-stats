@@ -78,13 +78,14 @@ def logout():
 def get_player_stats(player, match=None):
     stats = {}
     if match:
-        matches = player.matches.filter(CsgoMatch.id == match.id)
+        matches = player.matches.filter(CsgoMatch.id == match.id).all()
     else:
         matches = player.matches
     rounds = []
     for match in matches:
-        rounds.append(match.rounds)
+        rounds.extend(match.rounds)
     player_rounds = []
+    round_frags = []
     stats['frags'] = 0
     stats['singles'] = 0
     stats['doubles'] = 0
@@ -93,7 +94,8 @@ def get_player_stats(player, match=None):
     stats['aces'] = 0
     headshots = 0
     for round in rounds:
-        round_frags = round.frags.filter(Frag.fragger == g.player.id)
+        player_rounds.extend(round.player_rounds.filter(PlayerRound.player_id == player.id).all())
+        round_frags = round.frags.filter(Frag.fragger == player.id).all()
         if len(round_frags) == 1:
             stats['singles'] += 1
         elif len(round_frags) == 2:
@@ -108,8 +110,6 @@ def get_player_stats(player, match=None):
         for frag in round_frags:
             if frag.headshot:
                 headshots += 1
-        player_rounds.append(round.player_rounds.filter(
-            PlayerRound.player_id == player.id))
     try:
         stats['hsp'] = headshots / stats['frags']
     except ZeroDivisionError:
@@ -140,15 +140,15 @@ def get_player_stats(player, match=None):
             stats['plants'] += 1
         if round.bomb_defused:
             stats['defuses'] += 1
-        if won_1v == 1:
+        if round.won_1v == 1:
             stats['v1'] += 1
-        if won_1v == 2:
+        if round.won_1v == 2:
             stats['v2'] += 1
-        if won_1v == 3:
+        if round.won_1v == 3:
             stats['v3'] += 1
-        if won_1v == 4:
+        if round.won_1v == 4:
             stats['v4'] += 1
-        if won_1v == 5:
+        if round.won_1v == 5:
             stats['v5'] += 1
         total_rws += round.rws
     try:

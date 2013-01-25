@@ -50,10 +50,22 @@ class Server(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(128))
-    ip_address = db.Column(db.String(16))
-    port = db.Column(db.SmallInteger)
+    ip_address = db.Column(db.String(16), nullable=False)
+    port = db.Column(db.SmallInteger, default=27015)
     rcon_password = db.Column(db.String(64))
     db.UniqueConstraint('ip_address', 'port', name='uidx_address')
+    matches = db.relationship('CsgoMatch', backref='server', lazy='dynamic',
+                              cascade='all, delete-orphan')
+
+    @staticmethod
+    def get_or_create(ip_address, port=27015):
+        server = Server.query.filter_by(ip_address=ip_address, port=port).first()
+        if server is None:
+            server = Server()
+            server.ip_address = ip_address
+            server.port = port
+            db.session.add(server)
+        return server
 
 
 match_players = db.Table('match_players',
@@ -73,15 +85,18 @@ class CsgoMatch(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     type = db.Column(db.SmallInteger)
-    server = db.Column(db.Integer, db.ForeignKey('server.id'))
-    start_time = db.Column(db.DateTime)
+    server_id = db.Column(db.Integer, db.ForeignKey('server.id'),
+                          nullable=False)
+    start_time = db.Column(db.DateTime, nullable=False)
     end_time = db.Column(db.DateTime)
     map = db.Column(db.String(64))
-    rounds = db.relationship('Round', backref='csgo_match', lazy='dynamic')
+    rounds = db.relationship('Round', backref='csgo_match', lazy='dynamic',
+                             cascade='all, delete-orphan')
     team_a = db.ForeignKey('team')
     team_b = db.ForeignKey('team')
     players = db.relationship('Player', secondary=match_players,
                               backref='matches')
+    db.UniqueConstraint('server_id', 'start_time', name='uidx_server_match')
 
 
 team_players = db.Table('team_players',
@@ -134,5 +149,7 @@ class Round(db.Model):
     period = db.Column(db.SmallInteger)
     winning_team = db.Column(db.SmallInteger)
     player_rounds = db.relationship('PlayerRound', backref='round',
-                                    lazy='dynamic')
-    frags = db.relationship('Frag', backref='round', lazy='dynamic')
+                                    lazy='dynamic',
+                                    cascade='all, delete-orphan')
+    frags = db.relationship('Frag', backref='round', lazy='dynamic',
+                            cascade='all, delete-orphan')
