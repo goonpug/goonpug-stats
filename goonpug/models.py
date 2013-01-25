@@ -33,13 +33,15 @@ class Player(db.Model, UserMixin):
     role = db.Column(db.SmallInteger, default=ROLE_USER)
 
     @staticmethod
-    def get_or_create(steam_id):
+    def get_or_create(steam_id, nickname=None):
         if isinstance(steam_id, str):
             steam_id = SteamId(steam_id).id64()
         player = Player.query.filter_by(steam_id=steam_id).first()
         if player is None:
             player = Player()
             player.steam_id = steam_id
+            if nickname:
+                player.nickname = nickname
             db.session.add(player)
         return player
 
@@ -99,13 +101,13 @@ class Team(db.Model):
 
 class Frag(db.Model):
 
-    round_id = db.Column(db.Integer, db.ForeignKey('round.id'),
-                         primary_key=True)
-    victim = db.Column(db.Integer, db.ForeignKey('player.id'),
-                       primary_key=True)
+    id = db.Column(db.Integer, primary_key=True)
+    round_id = db.Column(db.Integer, db.ForeignKey('round.id'))
+    victim = db.Column(db.Integer, db.ForeignKey('player.id'))
     fragger = db.Column(db.Integer, db.ForeignKey('player.id'))
     weapon = db.Column(db.String(16), default=False)
     headshot = db.Column(db.Boolean, default=False)
+    tk = db.Column(db.Boolean, default=False)
 
 
 class PlayerRound(db.Model):
@@ -117,6 +119,7 @@ class PlayerRound(db.Model):
     assists = db.Column(db.SmallInteger, default=0)
     dead = db.Column(db.Boolean, default=False)
     damage = db.Column(db.Integer, default=0)
+    ff_damage = db.Column(db.Integer, default=0)
     bomb_planted = db.Column(db.Boolean, default=False)
     bomb_defused = db.Column(db.Boolean, default=False)
     # if the player won 1vN, set this to N
