@@ -9,24 +9,30 @@
         <table class="table table-condensed table-bordered">
             <thead>
                 <tr>
-                    <th>F</th>
-                    <th>A</th>
-                    <th>D</th>
-                    <th>BP</th>
-                    <th>BD</th>
-                    <th>3K</th>
-                    <th>4K</th>
-                    <th>5K</th>
-                    <th>1v2</th>
-                    <th>v3</th>
-                    <th>v4</th>
-                    <th>HSP</th>
-                    <th>ADR</th>
-                    <th>FPR</th>
-                    <th>RWS</th>
+                    <th><a href="#" rel="tooltip" title="Rounds Played">RP</a></th>
+                    <th><a href="#" rel="tooltip" title="Rounds Won">W</a></th>
+                    <th><a href="#" rel="tooltip" title="Rounds Lost">L</a></th>
+                    <th><a href="#" rel="tooltip" title="Kills">K</a></th>
+                    <th><a href="#" rel="tooltip" title="Assists">A</a></th>
+                    <th><a href="#" rel="tooltip" title="Deaths">D</a></th>
+                    <th><a href="#" rel="tooltip" title="Bomb plants">BP</a></th>
+                    <th><a href="#" rel="tooltip" title="Bomb defuses">BD</a></th>
+                    <th><a href="#" rel="tooltip" title="3 Kill Rounds">3K</a></th>
+                    <th><a href="#" rel="tooltip" title="4 Kill Rounds">4K</a></th>
+                    <th><a href="#" rel="tooltip" title="5 Kill Rounds (Aces)">5K</a></th>
+                    <th><a href="#" rel="tooltip" title="1v2 Wins">1v2</a></th>
+                    <th><a href="#" rel="tooltip" title="1v3 Wins">v3</a></th>
+                    <th><a href="#" rel="tooltip" title="1v4 Wins">v4</a></th>
+                    <th><a href="#" rel="tooltip" title="Headshot Percentage">HSP</a></th>
+                    <th><a href="#" rel="tooltip" title="Average Damage per Round">ADR</a></th>
+                    <th><a href="#" rel="tooltip" title="Kills per Round">KPR</a></th>
+                    <th><a href="#" rel="tooltip" title="Average Round Win Shares">RWS</a></th>
                 </tr>
             </thead>
             <tr>
+                <td>{{ g.stats.rounds_played }}</td>
+                <td>{{ g.stats.rounds_won }} </td>
+                <td>{{ g.stats.rounds_lost }} </td>
                 <td>{{ g.stats.frags }}</td>
                 <td>{{ g.stats.assists }}</td>
                 <td>{{ g.stats.deaths }}</td>
@@ -38,10 +44,10 @@
                 <td>{{ g.stats.v2 }}</td>
                 <td>{{ g.stats.v3 }}</td>
                 <td>{{ g.stats.v4 }}</td>
-                <td>{{ g.stats.hsp }}</td>
-                <td>{{ g.stats.adr }}</td>
-                <td>{{ g.stats.fpr }}</td>
-                <td>{{ g.stats.rws }}</td>
+                <td>{{ "%.3f"|format(g.stats.hsp) }}</td>
+                <td>{{ "%.1f"|format(g.stats.adr) }}</td>
+                <td>{{ "%.2f"|format(g.stats.fpr) }}</td>
+                <td>{{ "%.1f"|format(g.stats.rws) }}</td>
             </tr>
         </table>
     </div>

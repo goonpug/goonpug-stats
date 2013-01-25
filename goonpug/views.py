@@ -22,7 +22,7 @@ from flask.ext.login import login_user, logout_user
 from werkzeug.urls import url_encode
 
 from . import app, db, oid, login_manager
-from .models import Frag, CsgoMatch, Player, PlayerRound, Round
+from .models import Frag, CsgoMatch, Player, PlayerRound, Round, match_players
 
 
 _steam_id_re = re.compile('steamcommunity.com/openid/id/(.*?)$')
@@ -84,6 +84,7 @@ def get_player_stats(player, match=None):
     rounds = []
     for match in matches:
         rounds.extend(match.rounds)
+    match_player = db.session.query(match_players).filter_by(match_id=match.id, player_id=player.id).first()
     player_rounds = []
     round_frags = []
     stats['frags'] = 0
@@ -92,6 +93,8 @@ def get_player_stats(player, match=None):
     stats['triples'] = 0
     stats['quads'] = 0
     stats['aces'] = 0
+    stats['rounds_won'] = 0
+    stats['rounds_lost'] = 0
     headshots = 0
     for round in rounds:
         player_rounds.extend(round.player_rounds.filter(PlayerRound.player_id == player.id).all())
@@ -130,27 +133,31 @@ def get_player_stats(player, match=None):
     stats['v5'] = 0
     stats['damage'] = 0
     total_rws = 0.0
-    for round in player_rounds:
-        stats['damage'] += round.damage
-        stats['assists'] += round.assists
-        if round.dead:
+    for player_round in player_rounds:
+        if player_round.round.winning_team == match_player.team:
+            stats['rounds_won'] += 1
+        else:
+            stats['rounds_lost'] += 1
+        stats['damage'] += player_round.damage
+        stats['assists'] += player_round.assists
+        if player_round.dead:
             stats['deaths'] += 1
-        stats['damage'] += round.damage
-        if round.bomb_planted:
+        stats['damage'] += player_round.damage
+        if player_round.bomb_planted:
             stats['plants'] += 1
-        if round.bomb_defused:
+        if player_round.bomb_defused:
             stats['defuses'] += 1
-        if round.won_1v == 1:
+        if player_round.won_1v == 1:
             stats['v1'] += 1
-        if round.won_1v == 2:
+        if player_round.won_1v == 2:
             stats['v2'] += 1
-        if round.won_1v == 3:
+        if player_round.won_1v == 3:
             stats['v3'] += 1
-        if round.won_1v == 4:
+        if player_round.won_1v == 4:
             stats['v4'] += 1
-        if round.won_1v == 5:
+        if player_round.won_1v == 5:
             stats['v5'] += 1
-        total_rws += round.rws
+        total_rws += player_round.rws
     try:
         stats['adr'] = stats['damage'] / stats['rounds_played']
     except ZeroDivisionError:
