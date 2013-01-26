@@ -42,9 +42,18 @@
                 <td>{{ item.won_1v3 }}</td>
                 <td>{{ item.won_1v4 }}</td>
                 <td>{{ item.won_1v5 }}</td>
+                {% if item.frags != 0 %}
                 <td>{{ "%.3f"|format(item.headshots / item.frags) }}</td>
+                {% else %}
+                <td>{{ "%.3f"|format(0) }}</td>
+                {% endif %}
+                {% if (item.rounds_won + item.rounds_lost) != 0 %}
                 <td>{{ "%.1f"|format(item.damage / (item.rounds_won + item.rounds_lost)) }}</td>
                 <td>{{ "%.2f"|format(item.frags / (item.rounds_won + item.rounds_lost)) }}</td>
+                {% else %}
+                <td>{{ "%.1f"|format(0) }}</td>
+                <td>{{ "%.2f"|format(0) }}</td>
+                {% endif %}
                 <td>{{ "%.1f"|format(item.rws) }}</td>
             </tr>
             {% endfor %}

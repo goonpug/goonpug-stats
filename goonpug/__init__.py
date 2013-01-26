@@ -26,11 +26,10 @@ from flask.ext.openid import OpenID
 app = Flask(__name__)
 
 app.config.from_object('goonpug.default_config')
-try:
+if os.environ.has_key('GOONPUG_CONFIG'):
     app.config.from_envvar('GOONPUG_CONFIG')
-except RuntimeError:
-    # do nothing if the envvar isn't set
-    pass
+elif os.path.isfile(os.path.join(os.getcwd(), 'config.py')):
+    app.config.from_pyfile(os.path.join(os.getcwd(), 'config.py'))
 
 app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql://%s:%s@%s:%d/%s' % (
     app.config['MYSQL_USER'], app.config['MYSQL_PASSWORD'],

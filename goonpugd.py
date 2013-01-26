@@ -27,7 +27,7 @@ class GoonPugParser(object):
     """GoonPUG log parser class"""
 
     def __init__(self, server_address):
-        self.eventq = Queue()
+        self.eventq = Queue(100)
         self.event_handlers = {
             generic_events.LogFileEvent: self.handle_log_file,
             generic_events.ChangeMapEvent: self.handle_change_map,
@@ -102,12 +102,19 @@ class GoonPugParser(object):
         self.player_rounds = {}
 
     def _restart_match(self, timestamp):
-        # TODO if there is a match in progress than we just want to reset everything
+        # if there was an existing match in progress delete it
+        if self.match:
+            print 'abandoning match %s' % self.match
+            db.session.expunge(self.match)
+        if self.round:
+            print 'abandoning round %s' % self.round
+            db.session.expunge(self.round)
+        db.session.commit()
         # If this match exists already, delete the existing one
         match = db.session.query(CsgoMatch).filter_by(server_id=self.server.id,
             start_time=timestamp).first()
         if match:
-            db.session.delete(match)
+            db.session.expunge(match)
         self.match = CsgoMatch()
         # we only support pugs right now
         self.match.type = CsgoMatch.TYPE_PUG
@@ -137,11 +144,13 @@ class GoonPugParser(object):
         self.player_rounds = {}
         self.t_score = 0
         self.ct_score = 0
+        print 'started new match %s' % self.match
 
     def _end_match(self, event):
         self._commit_round()
         self.match.end_time = event.timestamp
         db.session.commit()
+        print 'ended match %s' % self.match
         self.match = None
         self.round = None
 
@@ -222,7 +231,10 @@ class GoonPugParser(object):
         else:
             multi = 100.0
         for steam_id in team:
-            rws = multi * (self.player_rounds[steam_id].damage / team_damage)
+            try:
+                rws = multi * (self.player_rounds[steam_id].damage / team_damage)
+            except ZeroDivisionError:
+                rws = 0.0
             if defused and self.defuser == steam_id:
                 rws += 30.0
             if exploded and self.planter == steam_id:
@@ -247,7 +259,7 @@ class GoonPugParser(object):
         db.session.commit()
 
     def handle_suicide(self, event):
-        if not self.round:
+        if not self.match:
             return
         if VERBOSE:
             print event
@@ -281,7 +293,7 @@ class GoonPugParser(object):
         pass
 
     def handle_player_action(self, event):
-        if not self.round:
+        if not self.match:
             return
         if VERBOSE:
             print event
@@ -293,7 +305,7 @@ class GoonPugParser(object):
             self.player_rounds[self.defuser].bomb_defused = True
 
     def handle_team_action(self, event):
-        if not self.round:
+        if not self.match or not self.round:
             return
         if VERBOSE:
             print event
@@ -302,7 +314,8 @@ class GoonPugParser(object):
         elif event.action == "SFUI_Notice_Target_Bombed":
             self._sfui_notice(event.team, exploded=True)
         elif event.action == "SFUI_Notice_Terrorists_Win" \
-                or event.action == "SFUI_Notice_CTs_Win":
+                or event.action == "SFUI_Notice_CTs_Win" \
+                or event.action == "SFUI_Notice_Target_Saved":
             self._sfui_notice(event.team)
 
     def handle_world_action(self, event):
@@ -311,6 +324,8 @@ class GoonPugParser(object):
         if VERBOSE:
             print event
         if event.action.startswith('Restart_Round_'):
+            if self.round:
+                self.round = None
             if not self.last_restart:
                 self.lo3_count = 1
             else:
@@ -338,7 +353,7 @@ class GoonPugParser(object):
             self.t_score = event.score
 
     def handle_kill(self, event):
-        if not self.round:
+        if not self.match or not self.round:
             return
         if VERBOSE:
             print event
@@ -371,7 +386,7 @@ class GoonPugParser(object):
         self.frags.append(frag)
 
     def handle_attack(self, event):
-        if not self.round:
+        if not self.match or not self.round:
             return
         if VERBOSE:
             print event
@@ -388,7 +403,7 @@ class GoonPugParser(object):
                 player_round.ff_damage += event.damage
 
     def handle_assist(self, event):
-        if not self.round:
+        if not self.match or not self.round:
             return
         if VERBOSE:
             print event
@@ -403,10 +418,13 @@ class GoonPugParser(object):
             print event
         steam_id = event.player.steam_id.id64()
         player = db.session.query(Player).filter_by(steam_id=steam_id).first()
-        if event.orig_team == 'CT':
-            self.cts.remove(steam_id)
-        elif event.orig_team == 'TERRORIST':
-            self.ts.remove(steam_id)
+        try:
+            if event.orig_team == 'CT':
+                self.cts.remove(steam_id)
+            elif event.orig_team == 'TERRORIST':
+                self.ts.remove(steam_id)
+        except ValueError:
+            pass
         if event.new_team == 'CT':
             self.cts.append(steam_id)
             if self.round:
@@ -512,11 +530,12 @@ def main():
         port = int(port)
         log_parser = GoonPugParser((host, port))
         print "goonpugd: Reading from STDIN"
+        thread = threading.Thread(target=log_parser.process_events)
+        thread.start()
         while True:
             try:
                 for line in sys.stdin.readlines():
                     log_parser.parse_line(line)
-                log_parser.process_events()
             except KeyboardInterrupt:
                 sys.exit()
             except EOFError:

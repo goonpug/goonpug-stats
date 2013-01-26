@@ -45,6 +45,9 @@ class Player(db.Model, UserMixin):
             db.session.add(player)
         return player
 
+    def match_stats():
+        self.matches
+
 
 class Server(db.Model):
 
@@ -87,7 +90,7 @@ class CsgoMatch(db.Model):
     type = db.Column(db.SmallInteger)
     server_id = db.Column(db.Integer, db.ForeignKey('server.id'),
                           nullable=False)
-    start_time = db.Column(db.DateTime, nullable=False)
+    start_time = db.Column(db.DateTime, nullable=False, index=True)
     end_time = db.Column(db.DateTime)
     map = db.Column(db.String(64))
     rounds = db.relationship('Round', backref='csgo_match', lazy='dynamic',
@@ -139,7 +142,7 @@ class PlayerRound(db.Model):
     bomb_defused = db.Column(db.Boolean, default=False)
     # if the player won 1vN, set this to N
     won_1v = db.Column(db.SmallInteger, default=0)
-    rws = db.Column(db.Float, default=0.0)
+    rws = db.Column(db.Float, default=0.0, index=True)
 
 
 class Round(db.Model):
