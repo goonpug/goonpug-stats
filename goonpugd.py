@@ -210,7 +210,7 @@ class GoonPugParser(object):
                 self.round.winning_team = CsgoMatch.TEAM_A
         for steam_id, v1 in self.v1.items():
             if steam_id in team:
-                self.player_rounds[steam_id].v1 = v1
+                self.player_rounds[steam_id].won_1v = v1
             break
         team_damage = 0
         for steam_id in team:

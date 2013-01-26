@@ -1,15 +1,12 @@
 {% extends "base.html" %}
+{% import 'macros.html' as macros %}
 {% block body %}
-{% if g.player %}
 <div class="row">
-    <div class="span2">
-        <p><strong>{{ g.player.nickname }}</strong></p>
-    </div>
-    <div class="span10">
+    <h1>Player Leaderboards</h1>
         <table class="table table-condensed table-bordered">
             <thead>
                 <tr>
-                    <th><a href="#" rel="tooltip" title="Rounds Played">RP</a></th>
+                    <th>Player</th>
                     <th><a href="#" rel="tooltip" title="Rounds Won">W</a></th>
                     <th><a href="#" rel="tooltip" title="Rounds Lost">L</a></th>
                     <th><a href="#" rel="tooltip" title="Kills">K</a></th>
@@ -29,30 +26,29 @@
                     <th><a href="#" rel="tooltip" title="Average Round Win Shares">RWS</a></th>
                 </tr>
             </thead>
+            {% for item in g.pagination.items %}
             <tr>
-                <td>{{ g.stats.rounds_won + g.stats.rounds_lost }}</td>
-                <td>{{ g.stats.rounds_won }} </td>
-                <td>{{ g.stats.rounds_lost }} </td>
-                <td>{{ g.stats.frags }}</td>
-                <td>{{ g.stats.assists }}</td>
-                <td>{{ g.stats.deaths }}</td>
-                <td>{{ g.stats.bomb_planted }}</td>
-                <td>{{ g.stats.bomb_defused }}</td>
-                <td>{{ g.stats.k3 }}</td>
-                <td>{{ g.stats.k4 }}</td>
-                <td>{{ g.stats.k5 }}</td>
-                <td>{{ g.stats.won_1v3 }}</td>
-                <td>{{ g.stats.won_1v4 }}</td>
-                <td>{{ g.stats.won_1v5 }}</td>
-                <td>{{ "%.3f"|format(g.stats.headshots / g.stats.frags) }}</td>
-                <td>{{ "%.1f"|format(g.stats.damage / (g.stats.rounds_won + g.stats.rounds_lost)) }}</td>
-                <td>{{ "%.2f"|format(g.stats.frags / (g.stats.rounds_won + g.stats.rounds_lost)) }}</td>
-                <td>{{ "%.1f"|format(g.stats.rws) }}</td>
+                <td><a href="{{ url_for('player', player_id=item.player_id) }}">{{ item.nickname }}</a></td>
+                <td>{{ item.rounds_won }}</td>
+                <td>{{ item.rounds_lost }}</td>
+                <td>{{ item.frags }}</td>
+                <td>{{ item.assists }}</td>
+                <td>{{ item.deaths }}</td>
+                <td>{{ item.bomb_planted }}</td>
+                <td>{{ item.bomb_defused }}</td>
+                <td>{{ item.k3 }}</td>
+                <td>{{ item.k4 }}</td>
+                <td>{{ item.k5 }}</td>
+                <td>{{ item.won_1v3 }}</td>
+                <td>{{ item.won_1v4 }}</td>
+                <td>{{ item.won_1v5 }}</td>
+                <td>{{ "%.3f"|format(item.headshots / item.frags) }}</td>
+                <td>{{ "%.1f"|format(item.damage / (item.rounds_won + item.rounds_lost)) }}</td>
+                <td>{{ "%.2f"|format(item.frags / (item.rounds_won + item.rounds_lost)) }}</td>
+                <td>{{ "%.1f"|format(item.rws) }}</td>
             </tr>
+            {% endfor %}
         </table>
-    </div>
+        {{ macros.render_pagination(g.pagination, 'stats') }}
 </div>
-{% else %}
-<h3>No player matching that ID</h3>
-{% endif %}
 {% endblock %}

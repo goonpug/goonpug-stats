@@ -39,6 +39,8 @@ app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql://%s:%s@%s:%d/%s' % (
 
 # DB stuff
 db = SQLAlchemy(app)
+metadata = db.MetaData()
+metadata.bind = db.engine
 
 # Login stuff
 login_manager = LoginManager()

@@ -19,7 +19,7 @@ from __future__ import absolute_import
 from flask.ext.login import UserMixin
 from srcds.objects import SteamId
 
-from . import app, db
+from . import app, db, metadata
 
 
 class Player(db.Model, UserMixin):

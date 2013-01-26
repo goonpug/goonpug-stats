@@ -17,13 +17,14 @@
 
 from __future__ import absolute_import, division
 import re, urllib2
-from flask import g, session, json, flash, redirect, escape, render_template
+from flask import g, session, json, flash, redirect, escape, render_template, \
+    request
 from flask.ext.login import login_user, logout_user
 from werkzeug.urls import url_encode
 
 from . import app, db, oid, login_manager
-from .models import Frag, CsgoMatch, Player, PlayerRound, Round, match_players
-
+from .models import Frag, CsgoMatch, Player, PlayerRound, Round, \
+    match_players
 
 _steam_id_re = re.compile('steamcommunity.com/openid/id/(.*?)$')
 
@@ -75,101 +76,41 @@ def logout():
     logout_user()
     return redirect(oid.get_next_url())
 
-def get_player_stats(player, match=None):
-    stats = {}
-    if match:
-        matches = player.matches.filter(CsgoMatch.id == match.id).all()
-    else:
-        matches = player.matches
-    rounds = []
-    for match in matches:
-        rounds.extend(match.rounds)
-    match_player = db.session.query(match_players).filter_by(match_id=match.id, player_id=player.id).first()
-    player_rounds = []
-    round_frags = []
-    stats['frags'] = 0
-    stats['singles'] = 0
-    stats['doubles'] = 0
-    stats['triples'] = 0
-    stats['quads'] = 0
-    stats['aces'] = 0
-    stats['rounds_won'] = 0
-    stats['rounds_lost'] = 0
-    headshots = 0
-    for round in rounds:
-        player_rounds.extend(round.player_rounds.filter(PlayerRound.player_id == player.id).all())
-        round_frags = round.frags.filter(Frag.fragger == player.id).all()
-        if len(round_frags) == 1:
-            stats['singles'] += 1
-        elif len(round_frags) == 2:
-            stats['doubles'] += 1
-        elif len(round_frags) == 3:
-            stats['triples'] += 1
-        elif len(round_frags) == 4:
-            stats['quads'] += 1
-        elif len(round_frags) == 5:
-            stats['aces'] += 1
-        stats['frags'] += len(round_frags)
-        for frag in round_frags:
-            if frag.headshot:
-                headshots += 1
-    try:
-        stats['hsp'] = headshots / stats['frags']
-    except ZeroDivisionError:
-        stats['hsp'] = 0.0
-    stats['rounds_played']= len(player_rounds)
-    try:
-        stats['fpr'] = stats['frags'] / stats['rounds_played']
-    except ZeroDivisionError:
-        stats['fpr'] = 0.0
-    stats['assists'] = 0
-    stats['deaths'] = 0
-    stats['plants'] = 0
-    stats['defuses'] = 0
-    stats['v1'] = 0
-    stats['v2'] = 0
-    stats['v3'] = 0
-    stats['v4'] = 0
-    stats['v5'] = 0
-    stats['damage'] = 0
-    total_rws = 0.0
-    for player_round in player_rounds:
-        if player_round.round.winning_team == match_player.team:
-            stats['rounds_won'] += 1
-        else:
-            stats['rounds_lost'] += 1
-        stats['damage'] += player_round.damage
-        stats['assists'] += player_round.assists
-        if player_round.dead:
-            stats['deaths'] += 1
-        stats['damage'] += player_round.damage
-        if player_round.bomb_planted:
-            stats['plants'] += 1
-        if player_round.bomb_defused:
-            stats['defuses'] += 1
-        if player_round.won_1v == 1:
-            stats['v1'] += 1
-        if player_round.won_1v == 2:
-            stats['v2'] += 1
-        if player_round.won_1v == 3:
-            stats['v3'] += 1
-        if player_round.won_1v == 4:
-            stats['v4'] += 1
-        if player_round.won_1v == 5:
-            stats['v5'] += 1
-        total_rws += player_round.rws
-    try:
-        stats['adr'] = stats['damage'] / stats['rounds_played']
-    except ZeroDivisionError:
-        stats['adr'] = 0.0
-    try:
-        stats['rws'] = total_rws / stats['rounds_played']
-    except ZeroDivisionError:
-        stats['rws'] = 0.0
+def get_player_overall_stats(player):
+    metadata = db.MetaData()
+    metadata.bind = db.engine
+
+    class PlayerOverallStats(db.Model):
+        __table__ = db.Table('player_overall_stats', metadata,
+                db.Column('player_id', db.Integer, primary_key=True),
+                autoload=True)
+
+    stats = PlayerOverallStats.query.filter_by(player_id=player.id).first()
     return stats
 
 @app.route('/player/<int:player_id>')
-def player(player_id):
+def player(player_id=None):
     g.player = Player.query.get(player_id)
-    g.stats = get_player_stats(g.player)
+    g.stats = get_player_overall_stats(g.player)
     return render_template('player.html')
+
+@app.route('/stats')
+@app.route('/stats/<int:page>')
+def stats(page=1):
+    metadata = db.MetaData()
+    metadata.bind = db.engine
+
+    class PlayerOverallStats(db.Model):
+        __table__ = db.Table('player_overall_stats', metadata,
+                db.Column('player_id', db.Integer, primary_key=True),
+                autoload=True)
+
+    query = PlayerOverallStats.query
+    order = request.args.get('order_by', default='rws', type=str)
+    asc = request.args.get('asc', default=0, type=int)
+    if asc:
+        query = query.order_by(asc(order))
+    else:
+        query = query.order_by(db.desc(order))
+    g.pagination = query.paginate(page, error_out=False)
+    return render_template('stats_player.html')
