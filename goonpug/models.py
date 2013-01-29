@@ -137,12 +137,12 @@ class PlayerRound(db.Model):
     assists = db.Column(db.SmallInteger, default=0)
     dead = db.Column(db.Boolean, default=False)
     damage = db.Column(db.Integer, default=0)
-    ff_damage = db.Column(db.Integer, default=0)
     bomb_planted = db.Column(db.Boolean, default=False)
     bomb_defused = db.Column(db.Boolean, default=False)
     # if the player won 1vN, set this to N
     won_1v = db.Column(db.SmallInteger, default=0)
     rws = db.Column(db.Float, default=0.0, index=True)
+    dropped = db.Column(db.Boolean, default=False)
 
 
 class Round(db.Model):
