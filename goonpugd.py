@@ -189,6 +189,10 @@ class GoonPugParser(object):
                 player_round.won_1v = player.won_1v
                 player_round.dropped = player.dropped
                 player_round.rws = player.rws
+                if steam_id in self.team_a:
+                    player_round.team = CsgoMatch.TEAM_A
+                elif steam_id in self.team_b:
+                    player_round.team = CsgoMatch.TEAM_B
                 db.session.add(player_round)
         for frag in self.round_frags:
             frag.round_id = self.round.id

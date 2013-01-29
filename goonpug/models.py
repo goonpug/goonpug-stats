@@ -143,6 +143,7 @@ class PlayerRound(db.Model):
     won_1v = db.Column(db.SmallInteger, default=0)
     rws = db.Column(db.Float, default=0.0, index=True)
     dropped = db.Column(db.Boolean, default=False)
+    team = db.Column(db.SmallInteger)
 
 
 class Round(db.Model):
