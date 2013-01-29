@@ -273,13 +273,16 @@ class GoonPugParser(object):
     def handle_change_map(self, event):
         self.players = {}
         if VERBOSE:
-            print event
+            print str(event).decode('utf-8')
         if event.started:
-            self.mapname = event.mapname
+            if isinstance(event.mapname, unicode):
+                self.mapname = event.mapname
+            else:
+                self.mapname = unicode(event.mapname, 'utf-8')
 
     def handle_enter_game(self, event):
         if VERBOSE:
-            print event
+            print str(event).decode('utf-8')
         steam_id = event.player.steam_id.id64()
         Player.get_or_create(steam_id, nickname=event.player.name)
         db.session.commit()
@@ -303,7 +306,7 @@ class GoonPugParser(object):
         if not self.round:
             return
         if VERBOSE:
-            print event
+            print str(event).decode('utf-8')
         steam_id = event.player.steam_id.id64()
         self.players[steam_id].alive = False
         player = Player.query.filter_by(steam_id=steam_id).first()
@@ -318,7 +321,7 @@ class GoonPugParser(object):
 
     def handle_disconnection(self, event):
         if VERBOSE:
-            print event
+            print str(event).decode('utf-8')
 
     def handle_kick(self, event):
         # the leaving part should be taken care of by handle_disconnection
@@ -328,7 +331,7 @@ class GoonPugParser(object):
         if not self.match:
             return
         if VERBOSE:
-            print event
+            print str(event).decode('utf-8')
         steam_id = event.player.steam_id.id64()
         if event.action == "Planted_The_Bomb":
             self.players[steam_id].bomb_planted = True
@@ -339,7 +342,7 @@ class GoonPugParser(object):
         if not self.match or not self.round:
             return
         if VERBOSE:
-            print event
+            print str(event).decode('utf-8')
         if event.action == "SFUI_Notice_Bomb_Defused":
             self._sfui_notice(event.team, defused=True)
         elif event.action == "SFUI_Notice_Target_Bombed":
@@ -353,7 +356,7 @@ class GoonPugParser(object):
         # look for 3 or more restarts within 5 seconds of each other.
         # assume that this is a lo3 (or loN)
         if VERBOSE:
-            print event
+            print str(event).decode('utf-8')
         if event.action.startswith('Restart_Round_'):
             self._abandon_match()
         elif event.action == 'Round_Start':
@@ -365,7 +368,7 @@ class GoonPugParser(object):
 
     def handle_goonpug_action(self, event):
         if VERBOSE:
-            print event
+            print str(event).decode('utf-8')
         if event.action == 'Start_Match':
             self._start_match(event.timestamp)
         elif event.action == 'End_Match':
@@ -377,7 +380,7 @@ class GoonPugParser(object):
 
     def handle_round_end_team(self, event):
         if VERBOSE:
-            print event
+            print str(event).decode('utf-8')
         if event.team == 'CT':
             self.ct_score = event.score
         elif event.team == 'TERRORIST':
@@ -387,7 +390,7 @@ class GoonPugParser(object):
         if not self.round:
             return
         if VERBOSE:
-            print event
+            print str(event).decode('utf-8')
         steam_id = event.player.steam_id.id64()
         target_id = event.target.steam_id.id64()
         self.players[target_id].alive = False
@@ -407,7 +410,7 @@ class GoonPugParser(object):
         if not self.round:
             return
         if VERBOSE:
-            print event
+            print str(event).decode('utf-8')
         steam_id = event.player.steam_id.id64()
         target_id = event.target.steam_id.id64()
         # RWS doesn't care about ff damage
@@ -426,13 +429,13 @@ class GoonPugParser(object):
         if not self.round:
             return
         if VERBOSE:
-            print event
+            print str(event).decode('utf-8')
         steam_id = event.player.steam_id.id64()
         self.players[steam_id].assists += 1
 
     def handle_switch_team(self, event):
         if VERBOSE:
-            print event
+            print str(event).decode('utf-8')
         steam_id = event.player.steam_id.id64()
         player = db.session.query(Player).filter_by(steam_id=steam_id).first()
         if not self.players.has_key(steam_id):

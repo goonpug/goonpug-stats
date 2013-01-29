@@ -29,7 +29,7 @@ class Player(db.Model, UserMixin):
 
     id = db.Column(db.Integer, primary_key=True)
     steam_id = db.Column(db.BigInteger, unique=True)
-    nickname = db.Column(db.String(128))
+    nickname = db.Column(db.Unicode(128))
     role = db.Column(db.SmallInteger, default=ROLE_USER)
 
     @staticmethod
@@ -52,10 +52,10 @@ class Player(db.Model, UserMixin):
 class Server(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(db.String(128))
-    ip_address = db.Column(db.String(16), nullable=False)
+    name = db.Column(db.Unicode(128))
+    ip_address = db.Column(db.Unicode(16), nullable=False)
     port = db.Column(db.SmallInteger, default=27015)
-    rcon_password = db.Column(db.String(64))
+    rcon_password = db.Column(db.Unicode(64))
     db.UniqueConstraint('ip_address', 'port', name='uidx_address')
     matches = db.relationship('CsgoMatch', backref='server', lazy='dynamic',
                               cascade='all, delete-orphan')
@@ -92,7 +92,7 @@ class CsgoMatch(db.Model):
                           nullable=False)
     start_time = db.Column(db.DateTime, nullable=False, index=True)
     end_time = db.Column(db.DateTime)
-    map = db.Column(db.String(64))
+    map = db.Column(db.Unicode(64))
     rounds = db.relationship('Round', backref='csgo_match', lazy='dynamic',
                              cascade='all, delete-orphan')
     team_a = db.ForeignKey('team')
@@ -111,8 +111,8 @@ team_players = db.Table('team_players',
 class Team(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
-    nickname = db.Column(db.String(64))
-    tag = db.Column(db.String(16))
+    nickname = db.Column(db.Unicode(64))
+    tag = db.Column(db.Unicode(16))
     players = db.relationship('Player', secondary=team_players,
                               backref='teams')
 
@@ -123,7 +123,7 @@ class Frag(db.Model):
     round_id = db.Column(db.Integer, db.ForeignKey('round.id'))
     victim = db.Column(db.Integer, db.ForeignKey('player.id'))
     fragger = db.Column(db.Integer, db.ForeignKey('player.id'))
-    weapon = db.Column(db.String(16), default=False)
+    weapon = db.Column(db.Unicode(16), default=False)
     headshot = db.Column(db.Boolean, default=False)
     tk = db.Column(db.Boolean, default=False)
 

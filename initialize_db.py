@@ -5,14 +5,14 @@ from goonpug.models import Player
 
 
 db.create_all()
-bot = Player.get_or_create(0, 'Bot')
-bot.nickname = 'Bot'
+bot = Player.get_or_create(0, u'Bot')
+bot.nickname = u'Bot'
 db.session.commit()
 
 # create the player stats views
 q = '''CREATE OR REPLACE VIEW player_round_stats AS
 SELECT pr.*, SUM(IF(f.tk, 0, 1)) AS frags, SUM(f.tk) AS tks,
-SUM(f.headshot) AS headshots
+SUM(IF(f.headshot AND NOT f.tk, 1, 0)) AS headshots
 FROM player_round pr, frag f
 WHERE pr.player_id = f.fragger AND pr.round_id = f.round_id
 GROUP BY pr.round_id, pr.player_id
@@ -28,10 +28,10 @@ db.session.execute(q)
 q = '''CREATE OR REPLACE VIEW player_match_round_wl AS
 SELECT mp.match_id, mp.player_id,
     SUM(CASE
-    WHEN r.winning_team = mp.team THEN 1 ELSE 0
+    WHEN r.winning_team = mp.team AND NOT pr.dropped THEN 1 ELSE 0
     END) as rounds_won,
     SUM(CASE
-    WHEN r.winning_team != mp.team THEN 1 ELSE 0
+    WHEN r.winning_team != mp.team AND NOT pr.dropped THEN 1 ELSE 0
     END) as rounds_lost
 FROM match_players mp, round r, player_round pr
 WHERE mp.match_id = r.match_id AND pr.player_id = mp.player_id
@@ -46,36 +46,16 @@ SELECT p.player_id, r.match_id, SUM(p.assists) AS assists,
     SUM(p.tks) AS tks, SUM(p.headshots) AS headshots, SUM(p.dead) AS deaths,
     SUM(p.bomb_planted) AS bomb_planted,
     SUM(p.bomb_defused) AS bomb_defused,
-    SUM(CASE p.won_1v
-        WHEN 1 THEN 1 ELSE 0
-        END) AS won_1v1,
-    SUM(CASE p.won_1v
-        WHEN 2 THEN 1 ELSE 0
-        END) AS won_1v2,
-    SUM(CASE p.won_1v
-        WHEN 3 THEN 1 ELSE 0
-        END) AS won_1v3,
-    SUM(CASE p.won_1v
-        WHEN 4 THEN 1 ELSE 0
-        END) AS won_1v4,
-    SUM(CASE p.won_1v
-        WHEN 5 THEN 1 ELSE 0
-        END) AS won_1v5,
-    SUM(CASE p.frags
-        WHEN 1 THEN 1 ELSE 0
-        END) AS k1,
-    SUM(CASE p.frags
-        WHEN 2 THEN 1 ELSE 0
-        END) AS k2,
-    SUM(CASE p.frags
-        WHEN 3 THEN 1 ELSE 0
-        END) AS k3,
-    SUM(CASE p.frags
-        WHEN 4 THEN 1 ELSE 0
-        END) AS k4,
-    SUM(CASE p.frags
-        WHEN 5 THEN 1 ELSE 0
-        END) AS k5,
+    SUM(IF(p.won_1v = 1, 1, 0)) AS won_1v1,
+    SUM(IF(p.won_1v = 2, 1, 0)) AS won_1v2,
+    SUM(IF(p.won_1v = 3, 1, 0)) AS won_1v3,
+    SUM(IF(p.won_1v = 4, 1, 0)) AS won_1v4,
+    SUM(IF(p.won_1v = 5, 1, 0)) AS won_1v5,
+    SUM(IF(p.frags = 1, 1, 0)) AS k1,
+    SUM(IF(p.frags = 2, 1, 0)) AS k2,
+    SUM(IF(p.frags = 3, 1, 0)) AS k3,
+    SUM(IF(p.frags = 4, 1, 0)) AS k4,
+    SUM(IF(p.frags = 5, 1, 0)) AS k5,
     COALESCE(rwl.rounds_won, 0) AS rounds_won,
     COALESCE(rwl.rounds_lost, 0) AS rounds_lost
     FROM player_round_stats p
