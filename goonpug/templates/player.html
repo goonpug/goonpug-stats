@@ -15,14 +15,19 @@
                     <th><a href="#" rel="tooltip" title="Kills">K</a></th>
                     <th><a href="#" rel="tooltip" title="Assists">A</a></th>
                     <th><a href="#" rel="tooltip" title="Deaths">D</a></th>
+                    <th><a href="#" rel="tooltip" title="Kill:Death Ratio">KDR</th>
                     <th><a href="#" rel="tooltip" title="Bomb plants">BP</a></th>
                     <th><a href="#" rel="tooltip" title="Bomb defuses">BD</a></th>
+                    <th><a href="#" rel="tooltip" title="1 Kill Rounds">1K</a></th>
+                    <th><a href="#" rel="tooltip" title="2 Kill Rounds">2K</a></th>
                     <th><a href="#" rel="tooltip" title="3 Kill Rounds">3K</a></th>
                     <th><a href="#" rel="tooltip" title="4 Kill Rounds">4K</a></th>
                     <th><a href="#" rel="tooltip" title="5 Kill Rounds (Aces)">5K</a></th>
-                    <th><a href="#" rel="tooltip" title="1v2 Wins">1v2</a></th>
+                    <th><a href="#" rel="tooltip" title="1v1 Wins">1v1</a></th>
+                    <th><a href="#" rel="tooltip" title="1v2 Wins">v2</a></th>
                     <th><a href="#" rel="tooltip" title="1v3 Wins">v3</a></th>
                     <th><a href="#" rel="tooltip" title="1v4 Wins">v4</a></th>
+                    <th><a href="#" rel="tooltip" title="1v4 Wins">v5</a></th>
                     <th><a href="#" rel="tooltip" title="Headshot Percentage">HSP</a></th>
                     <th><a href="#" rel="tooltip" title="Average Damage per Round">ADR</a></th>
                     <th><a href="#" rel="tooltip" title="Kills per Round">KPR</a></th>
@@ -36,17 +41,35 @@
                 <td>{{ g.stats.frags }}</td>
                 <td>{{ g.stats.assists }}</td>
                 <td>{{ g.stats.deaths }}</td>
+                {% if g.stats.deaths == 0 %}
+                <td>0.00</td>
+                {% else %}
+                <td>{{ "%.2f"|format(g.stats.frags / g.stats.deaths) }}</td>
+                {% endif %}
                 <td>{{ g.stats.bomb_planted }}</td>
                 <td>{{ g.stats.bomb_defused }}</td>
+                <td>{{ g.stats.k1 }}</td>
+                <td>{{ g.stats.k2 }}</td>
                 <td>{{ g.stats.k3 }}</td>
                 <td>{{ g.stats.k4 }}</td>
                 <td>{{ g.stats.k5 }}</td>
+                <td>{{ g.stats.won_1v1 }}</td>
+                <td>{{ g.stats.won_1v2 }}</td>
                 <td>{{ g.stats.won_1v3 }}</td>
                 <td>{{ g.stats.won_1v4 }}</td>
                 <td>{{ g.stats.won_1v5 }}</td>
+                {% if g.stats.frags == 0 %}
+                <td>0.000</td>
+                {% else %}
                 <td>{{ "%.3f"|format(g.stats.headshots / g.stats.frags) }}</td>
+                {% endif %}
+                {% if (g.stats.rounds_won + g.stats.rounds_lost) == 0 %}
+                <td>0.0</td>
+                <td>0.00</td>
+                {% else %}
                 <td>{{ "%.1f"|format(g.stats.damage / (g.stats.rounds_won + g.stats.rounds_lost)) }}</td>
                 <td>{{ "%.2f"|format(g.stats.frags / (g.stats.rounds_won + g.stats.rounds_lost)) }}</td>
+                {% endif %}
                 <td>{{ "%.1f"|format(g.stats.rws) }}</td>
             </tr>
         </table>

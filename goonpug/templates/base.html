@@ -10,7 +10,7 @@
     <meta name="author" content="">
 
     <!-- Le styles -->
-    <link href="{{ url_for('static', filename='css/bootstrap.css') }}" rel="stylesheet">
+    <link href="{{ url_for('static', filename='css/bootstrap.min.css') }}" rel="stylesheet">
     <style type="text/css">
       body {
         padding-top: 60px;
@@ -20,7 +20,6 @@
         padding: 9px 0;
       }
     </style>
-    <link href="{{ url_for('static', filename='css/bootstrap-responsive.css') }}" rel="stylesheet">
 
     <!-- HTML5 shim, for IE6-8 support of HTML5 elements -->
     <!--[if lt IE 9]>
@@ -81,7 +80,7 @@
       <hr>
 
       <footer>
-      <p>Powered by <a href="https://github.com/pmrowla/goonpug-stats">GoonPUG</a> &copy; 2013 Peter Rowlands | Powered by Steam</p>
+      <p>&copy; 2013 Peter Rowlands | Powered by Steam | Powered by <a href="https://github.com/pmrowla/goonpug-stats">GoonPUG</a> </p>
       </footer>
 
     </div><!--/.container-->
@@ -89,7 +88,12 @@
 <!-- Le javascript
 ================================================== -->
 <!-- Placed at the end of the document so the pages load faster -->
-<script src="//ajax.googleapis.com/ajax/libs/jquery/1.8.3/jquery.min.js"></script>
-<script src="{{ url_for('static', filename='js/bootstrap.js') }}"></script>
+<script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.0/jquery.min.js"></script>
+<script src="{{ url_for('static', filename='js/bootstrap.min.js') }}"></script>
+<script type="text/javascript">
+    $(document).ready(function () {
+        $("[rel=tooltip]").tooltip();
+    });
+</script>
   </body>
 </html>
