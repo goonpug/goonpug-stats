@@ -220,7 +220,7 @@ def stats(page=1):
         (subquery.c.frags / subquery.c.deaths).label('kdr'),
         (subquery.c.headshots / subquery.c.frags).label('hsp'),
         (subquery.c.damage / (subquery.c.rounds_won + subquery.c.rounds_lost)).label('adr'),
-        (subquery.c.damage / (subquery.c.rounds_won + subquery.c.rounds_lost)).label('fpr'),
+        (subquery.c.frags / (subquery.c.rounds_won + subquery.c.rounds_lost)).label('fpr'),
     ).join(Player)
     order = request.args.get('order_by', default='rws', type=str)
     asc = request.args.get('asc', default=0, type=int)
