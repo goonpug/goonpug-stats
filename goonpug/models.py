@@ -45,9 +45,6 @@ class Player(db.Model, UserMixin):
             db.session.add(player)
         return player
 
-    def match_stats():
-        self.matches
-
 
 class Server(db.Model):
 
@@ -57,7 +54,7 @@ class Server(db.Model):
     port = db.Column(db.SmallInteger, default=27015)
     rcon_password = db.Column(db.Unicode(64))
     db.UniqueConstraint('ip_address', 'port', name='uidx_address')
-    matches = db.relationship('CsgoMatch', backref='server', lazy='dynamic',
+    matches = db.relationship('CsgoMatch', backref='server',
                               cascade='all, delete-orphan')
 
     @staticmethod
@@ -144,6 +141,7 @@ class PlayerRound(db.Model):
     rws = db.Column(db.Float, default=0.0, index=True)
     dropped = db.Column(db.Boolean, default=False)
     team = db.Column(db.SmallInteger)
+    player = db.relationship('Player', backref='player_rounds')
 
 
 class Round(db.Model):
@@ -153,7 +151,9 @@ class Round(db.Model):
     period = db.Column(db.SmallInteger)
     winning_team = db.Column(db.SmallInteger)
     player_rounds = db.relationship('PlayerRound', backref='round',
-                                    lazy='dynamic',
                                     cascade='all, delete-orphan')
-    frags = db.relationship('Frag', backref='round', lazy='dynamic',
+    frags = db.relationship('Frag', backref='round',
                             cascade='all, delete-orphan')
+    players = db.relationship('Player', backref='rounds',
+                              secondary=PlayerRound.__table__,
+                              lazy="dynamic")
