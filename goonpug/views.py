@@ -108,30 +108,14 @@ def logout():
 @app.route('/player/<int:player_id>')
 def player(player_id=None):
     g.player = Player.query.get(player_id)
-    subquery = Player.match_stats().subquery()
-    query = db.session.query(
-        subquery,
-        Player.nickname,
-        (subquery.c.frags / subquery.c.deaths).label('kdr'),
-        (subquery.c.headshots / subquery.c.frags).label('hsp'),
-        (subquery.c.damage / (subquery.c.rounds_won + subquery.c.rounds_lost)).label('adr'),
-        (subquery.c.frags / (subquery.c.rounds_won + subquery.c.rounds_lost)).label('fpr'),
-    ).join(Player).group_by(subquery.c.player_id).filter_by(id=player_id)
+    query = Player.overall_stats().filter_by(id=player_id)
     g.stats = query.one()
     return render_template('player.html')
 
 @app.route('/stats')
 @app.route('/stats/<int:page>')
 def stats(page=1):
-    subquery = Player.match_stats().subquery()
-    query = db.session.query(
-        subquery,
-        Player.nickname,
-        (subquery.c.frags / subquery.c.deaths).label('kdr'),
-        (subquery.c.headshots / subquery.c.frags).label('hsp'),
-        (subquery.c.damage / (subquery.c.rounds_won + subquery.c.rounds_lost)).label('adr'),
-        (subquery.c.frags / (subquery.c.rounds_won + subquery.c.rounds_lost)).label('fpr'),
-    ).join(Player).group_by(subquery.c.player_id)
+    query = Player.overall_stats()
     sort_by = request.args.get('sort_by', default='rws', type=str)
     sort_order = request.args.get('sort_order', default='desc', type=str)
     per_page = request.args.get('per_page', default=15, type=int)

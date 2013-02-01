@@ -76,7 +76,7 @@ class Player(db.Model, UserMixin):
         return query
 
     @classmethod
-    def match_stats(cls):
+    def total_stats(cls):
         """Return stats for all CsgoMatches a Player has played in"""
         player_round_stats = cls.round_stats().subquery()
         query = db.session.query(
@@ -165,11 +165,24 @@ class Player(db.Model, UserMixin):
                     (player_round_stats.c.frags == 5, 1),
                 ], else_=0)
             ).label('k5'),
-        ).select_from(player_round_stats).join(Round)\
-        .group_by(
-            player_round_stats.c.player_id,
-            Round.match_id
-        )
+        ).select_from(player_round_stats).join(Round)
+        return query
+
+    @classmethod
+    def match_stats(cls, match_id=None):
+        return cls.total_stats().group_by('player_id', 'match_id')
+
+    @classmethod
+    def overall_stats(cls, match_id=None):
+        subquery = cls.total_stats().group_by('player_id').subquery()
+        query = db.session.query(
+            subquery,
+            Player.nickname,
+            (subquery.c.frags / subquery.c.deaths).label('kdr'),
+            (subquery.c.headshots / subquery.c.frags).label('hsp'),
+            (subquery.c.damage / (subquery.c.rounds_won + subquery.c.rounds_lost)).label('adr'),
+            (subquery.c.frags / (subquery.c.rounds_won + subquery.c.rounds_lost)).label('fpr'),
+        ).join(Player)
         return query
 
 
