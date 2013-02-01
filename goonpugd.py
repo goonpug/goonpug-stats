@@ -243,7 +243,12 @@ class GoonPugParser(object):
         team_damage = 0
         team_players = []
         for player in self.players.values():
-            if player.team == winning_team and not player.dropped:
+            if self.round.winning_team == CsgoMatch.TEAM_A \
+                    and player.steam_id.id64() in self.team_a:
+                team_damage += player.damage
+                team_players.append(player)
+            elif self.round.winning_team == CsgoMatch.TEAM_B \
+                    and player.steam_id.id64() in self.team_b:
                 team_damage += player.damage
                 team_players.append(player)
             else:
