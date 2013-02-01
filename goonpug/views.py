@@ -18,7 +18,7 @@
 from __future__ import absolute_import, division
 import re, urllib2
 from flask import g, session, json, flash, redirect, escape, render_template, \
-    request
+    request, url_for, Markup
 from flask.ext.login import login_user, logout_user
 from flask.ext.sqlalchemy import Pagination
 from werkzeug.urls import url_encode
@@ -36,6 +36,26 @@ try:
                 autoload=True)
 except NoSuchTableError:
     pass
+
+def url_for_other_page(page):
+    args = request.args.to_dict().copy()
+    args['page'] = page
+    return url_for(request.endpoint, **args)
+app.jinja_env.globals['url_for_other_page'] = url_for_other_page
+
+def sortable_th(display, title="", column_name=""):
+    if not column_name:
+        column_name = display.lower()
+    sort_by = request.args.get('sort_by', default='rws', type=str)
+    sort_order = 'desc'
+    if column_name == sort_by and request.args.get('sort_order',
+            default='desc', type=str) == 'desc':
+        sort_order = 'asc'
+    sort_by = column_name
+    return Markup('<th><a href="?sort_by=%s&sort_order=%s#" rel="tooltip" '
+                  'title="%s">%s</th>' % (column_name, sort_order, title,
+                                          display))
+app.jinja_env.globals['sortable_th'] = sortable_th
 
 def get_steam_userinfo(steam_id):
     options = {
@@ -112,13 +132,13 @@ def stats(page=1):
         (subquery.c.damage / (subquery.c.rounds_won + subquery.c.rounds_lost)).label('adr'),
         (subquery.c.frags / (subquery.c.rounds_won + subquery.c.rounds_lost)).label('fpr'),
     ).join(Player).group_by(subquery.c.player_id)
-    order = request.args.get('order_by', default='rws', type=str)
-    asc = request.args.get('asc', default=0, type=int)
-    per_page = request.args.get('per_page', default=10, type=int)
-    if asc:
-        query = query.order_by(asc(order))
-    else:
-        query = query.order_by(db.desc(order))
+    sort_by = request.args.get('sort_by', default='rws', type=str)
+    sort_order = request.args.get('sort_order', default='desc', type=str)
+    per_page = request.args.get('per_page', default=15, type=int)
+    if sort_order == 'asc':
+        query = query.order_by(db.asc(sort_by))
+    elif sort_order == 'desc':
+        query = query.order_by(db.desc(sort_by))
     total = query.count()
     items = query.limit(per_page).offset((page - 1) * per_page).all()
     g.pagination = Pagination(query, page, per_page, total, items)

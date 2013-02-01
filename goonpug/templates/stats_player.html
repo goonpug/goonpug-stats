@@ -6,28 +6,34 @@
         <table class="table table-condensed table-bordered">
             <thead>
                 <tr>
+                    <th></th>
                     <th>Player</th>
-                    <th><a href="#" rel="tooltip" title="Rounds Won">W</a></th>
-                    <th><a href="#" rel="tooltip" title="Rounds Lost">L</a></th>
-                    <th><a href="#" rel="tooltip" title="Kills">K</a></th>
-                    <th><a href="#" rel="tooltip" title="Deaths">D</a></th>
-                    <th><a href="#" rel="tooltip" title="Kill:Death Ratio">KDR</th>
-                    <th><a href="#" rel="tooltip" title="3 Kill Rounds">3K</a></th>
-                    <th><a href="#" rel="tooltip" title="4 Kill Rounds">4K</a></th>
-                    <th><a href="#" rel="tooltip" title="5 Kill Rounds (Aces)">5K</a></th>
-                    <th><a href="#" rel="tooltip" title="1v1 Wins">1v1</a></th>
-                    <th><a href="#" rel="tooltip" title="1v2 Wins">v2</a></th>
-                    <th><a href="#" rel="tooltip" title="1v3 Wins">v3</a></th>
-                    <th><a href="#" rel="tooltip" title="1v4 Wins">v4</a></th>
-                    <th><a href="#" rel="tooltip" title="1v5 Wins">v5</a></th>
-                    <th><a href="#" rel="tooltip" title="Headshot Percentage">HSP</a></th>
-                    <th><a href="#" rel="tooltip" title="Average Damage per Round">ADR</a></th>
-                    <th><a href="#" rel="tooltip" title="Kills per Round">KPR</a></th>
-                    <th><a href="#" rel="tooltip" title="Average Round Win Shares">RWS</a></th>
+                    {{ sortable_th('W', 'Rounds won', 'rounds_won') }}
+                    {{ sortable_th('L', 'Rounds Lost', 'rounds_lost') }}
+                    {{ sortable_th('K', 'Kills', 'frags') }}
+                    {{ sortable_th('D', 'Deaths') }}
+                    {{ sortable_th('KDR', 'Kill:Death Ratio', 'kdr') }}
+                    {{ sortable_th('3K', '3 Kill Rounds', 'k3') }}
+                    {{ sortable_th('4K', '4 Kill Rounds', 'k4') }}
+                    {{ sortable_th('5K', '5 Kill Rounds', 'k5') }}
+                    {{ sortable_th('1v1', '1v1 Wins', 'won_1v1') }}
+                    {{ sortable_th('v2', '1v2 Wins', 'won_1v2') }}
+                    {{ sortable_th('v3', '1v3 Wins', 'won_1v3') }}
+                    {{ sortable_th('v4', '1v4 Wins', 'won_1v4') }}
+                    {{ sortable_th('v5', '1v5 Wins', 'won_1v5') }}
+                    {{ sortable_th('HSP', 'Headshot Percentage') }}
+                    {{ sortable_th('ADR', 'Average Damage per Round') }}
+                    {{ sortable_th('KPR', 'Kills per Round') }}
+                    {{ sortable_th('RWS', 'Average Round Win Shares') }}
                 </tr>
             </thead>
             {% for item in g.pagination.items %}
             <tr>
+                {% if request.args.sort_order == 'asc' %}
+                <td>{{ g.pagination.total - (g.pagination.page - 1) * g.pagination.per_page - loop.index0 }}</td>
+                {% else %}
+                <td>{{ loop.index + (g.pagination.page - 1) * g.pagination.per_page }}</td>
+                {% endif %}
                 <td><a href="{{ url_for('player', player_id=item.player_id) }}">{{ item.nickname }}</a></td>
                 <td>{{ item.rounds_won }}</td>
                 <td>{{ item.rounds_lost }}</td>
@@ -65,6 +71,6 @@
             </tr>
             {% endfor %}
         </table>
-        {{ macros.render_pagination(g.pagination, 'stats') }}
+        {{ macros.render_pagination(g.pagination) }}
 </div>
 {% endblock %}
