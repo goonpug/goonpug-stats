@@ -102,7 +102,7 @@ class Player(db.Model, UserMixin):
                     (player_round_stats.c.bomb_defused, 1),
                 ], else_=0)
             ).label('bomb_defused'),
-            func.avg(player_round_stats.c.rws).label('rws'),
+            func.sum(player_round_stats.c.rws).label('total_rws'),
             func.sum(
                 case([
                     (and_(player_round_stats.c.team == Round.winning_team,
@@ -182,6 +182,7 @@ class Player(db.Model, UserMixin):
             (subquery.c.headshots / subquery.c.frags).label('hsp'),
             (subquery.c.damage / (subquery.c.rounds_won + subquery.c.rounds_lost)).label('adr'),
             (subquery.c.frags / (subquery.c.rounds_won + subquery.c.rounds_lost)).label('fpr'),
+            (subquery.c.total_rws / (subquery.c.rounds_won + subquery.c.rounds_lost)).label('rws'),
         ).join(Player)
         return query
 
