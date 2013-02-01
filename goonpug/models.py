@@ -117,6 +117,11 @@ class Player(db.Model, UserMixin):
             ).label('rounds_lost'),
             func.sum(
                 case([
+                    (player_round_stats.c.dropped, 1)
+                ], else_=0)
+            ).label('rounds_dropped'),
+            func.sum(
+                case([
                     (player_round_stats.c.won_1v == 1, 1),
                 ], else_=0)
             ).label('won_1v1'),
@@ -182,7 +187,7 @@ class Player(db.Model, UserMixin):
             (subquery.c.headshots / subquery.c.frags).label('hsp'),
             (subquery.c.damage / (subquery.c.rounds_won + subquery.c.rounds_lost)).label('adr'),
             (subquery.c.frags / (subquery.c.rounds_won + subquery.c.rounds_lost)).label('fpr'),
-            (subquery.c.total_rws / (subquery.c.rounds_won + subquery.c.rounds_lost)).label('rws'),
+            (subquery.c.total_rws / (subquery.c.rounds_won + subquery.c.rounds_lost + subquery.c.rounds_dropped)).label('rws'),
         ).join(Player)
         return query
 
