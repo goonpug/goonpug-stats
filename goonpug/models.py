@@ -18,6 +18,7 @@
 from __future__ import absolute_import
 from flask.ext.login import UserMixin
 from srcds.objects import SteamId
+from sqlalchemy import func, case, literal, not_, and_, or_, alias
 
 from . import app, db, metadata
 
@@ -44,6 +45,132 @@ class Player(db.Model, UserMixin):
                 player.nickname = nickname.encode('utf-8')
             db.session.add(player)
         return player
+
+    @classmethod
+    def round_stats(cls):
+        """Return stats for all Rounds a Player has played in"""
+        query = db.session.query(
+            PlayerRound,
+            func.sum(
+                case([
+                    (not_(Frag.tk), 1),
+                ], else_=0)
+            ).label('frags'),
+            func.sum(
+                case([
+                    (and_(Frag.tk, not_(Frag.fragger == Frag.victim)), 1),
+                ], else_=0)
+            ).label('tks'),
+            func.sum(
+                case([
+                    (and_(Frag.headshot == True, not_(Frag.tk)), 1),
+                ], else_=0)
+            ).label('headshots'),
+        ).select_from(
+            PlayerRound
+        ).outerjoin(
+            Frag,
+            and_(Frag.fragger == PlayerRound.player_id,
+                 PlayerRound.round_id == Frag.round_id)
+        ).group_by(PlayerRound.round_id, PlayerRound.player_id)
+        return query
+
+    @classmethod
+    def match_stats(cls):
+        """Return stats for all CsgoMatches a Player has played in"""
+        player_round_stats = cls.round_stats().subquery()
+        query = db.session.query(
+            player_round_stats.c.player_id,
+            Round.match_id,
+            func.sum(player_round_stats.c.frags).label('frags'),
+            func.sum(player_round_stats.c.tks).label('tks'),
+            func.sum(player_round_stats.c.headshots).label('headshots'),
+            func.sum(player_round_stats.c.assists).label('assists'),
+            func.sum(
+                case([
+                    (player_round_stats.c.dead, 1),
+                ], else_=0)
+            ).label('deaths'),
+            func.sum(player_round_stats.c.damage).label('damage'),
+            func.sum(
+                case([
+                    (player_round_stats.c.bomb_planted, 1),
+                ], else_=0)
+            ).label('bomb_planted'),
+            func.sum(
+                case([
+                    (player_round_stats.c.bomb_defused, 1),
+                ], else_=0)
+            ).label('bomb_defused'),
+            func.avg(player_round_stats.c.rws).label('rws'),
+            func.sum(
+                case([
+                    (and_(player_round_stats.c.team == Round.winning_team,
+                          not_(player_round_stats.c.dropped)), 1)
+                ], else_=0)
+            ).label('rounds_won'),
+            func.sum(
+                case([
+                    (and_(player_round_stats.c.team != Round.winning_team,
+                          not_(player_round_stats.c.dropped)), 1)
+                ], else_=0)
+            ).label('rounds_lost'),
+            func.sum(
+                case([
+                    (player_round_stats.c.won_1v == 1, 1),
+                ], else_=0)
+            ).label('won_1v1'),
+            func.sum(
+                case([
+                    (player_round_stats.c.won_1v == 2, 1),
+                ], else_=0)
+            ).label('won_1v2'),
+            func.sum(
+                case([
+                    (player_round_stats.c.won_1v == 3, 1),
+                ], else_=0)
+            ).label('won_1v3'),
+            func.sum(
+                case([
+                    (player_round_stats.c.won_1v == 4, 1),
+                ], else_=0)
+            ).label('won_1v4'),
+            func.sum(
+                case([
+                    (player_round_stats.c.won_1v == 5, 1),
+                ], else_=0)
+            ).label('won_1v5'),
+            func.sum(
+                case([
+                    (player_round_stats.c.frags == 1, 1),
+                ], else_=0)
+            ).label('k1'),
+            func.sum(
+                case([
+                    (player_round_stats.c.frags == 2, 1),
+                ], else_=0)
+            ).label('k2'),
+            func.sum(
+                case([
+                    (player_round_stats.c.frags == 3, 1),
+                ], else_=0)
+            ).label('k3'),
+            func.sum(
+                case([
+                    (player_round_stats.c.frags == 4, 1),
+                ], else_=0)
+            ).label('k4'),
+            func.sum(
+                case([
+                    (player_round_stats.c.frags == 5, 1),
+                ], else_=0)
+            ).label('k5'),
+        ).select_from(player_round_stats).join(Round)\
+        .group_by(
+            player_round_stats.c.player_id,
+            Round.match_id
+        )
+        return query
 
 
 class Server(db.Model):
