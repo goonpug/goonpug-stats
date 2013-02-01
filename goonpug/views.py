@@ -48,13 +48,16 @@ def sortable_th(display, title="", column_name=""):
         column_name = display.lower()
     sort_by = request.args.get('sort_by', default='rws', type=str)
     sort_order = 'desc'
-    if column_name == sort_by and request.args.get('sort_order',
-            default='desc', type=str) == 'desc':
-        sort_order = 'asc'
+    ico = ''
+    if column_name == sort_by:
+        ico = 'icon-chevron-up'
+        if request.args.get('sort_order', default='desc', type=str) == 'desc':
+            sort_order = 'asc'
+            ico = 'icon-chevron-down'
     sort_by = column_name
-    return Markup('<th><a href="?sort_by=%s&sort_order=%s#" rel="tooltip" '
-                  'title="%s">%s</th>' % (column_name, sort_order, title,
-                                          display))
+    return Markup('<th><a href="1?sort_by=%s&sort_order=%s" rel="tooltip" title="%s">'
+                  '<i class="%s"></i> %s</a></th>'% (column_name, sort_order, title,
+                                                     ico, display))
 app.jinja_env.globals['sortable_th'] = sortable_th
 
 def get_steam_userinfo(steam_id):
@@ -115,7 +118,7 @@ def player(player_id=None):
 @app.route('/stats')
 @app.route('/stats/<int:page>')
 def stats(page=1):
-    query = Player.overall_stats()
+    query = Player.overall_stats().filter('rounds_won + rounds_lost >= 75')
     sort_by = request.args.get('sort_by', default='rws', type=str)
     sort_order = request.args.get('sort_order', default='desc', type=str)
     per_page = request.args.get('per_page', default=15, type=int)
@@ -126,4 +129,6 @@ def stats(page=1):
     total = query.count()
     items = query.limit(per_page).offset((page - 1) * per_page).all()
     g.pagination = Pagination(query, page, per_page, total, items)
+    (last_updated,) = db.session.query(CsgoMatch.end_time).order_by(db.desc('end_time')).first()
+    g.last_updated = last_updated.strftime(u'%Y-%m-%d %H:%M:%S %Z')
     return render_template('stats_player.html')

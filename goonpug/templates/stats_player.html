@@ -3,7 +3,7 @@
 {% block body %}
 <div class="row">
     <h1>Player Leaderboards</h1>
-        <table class="table table-condensed table-bordered">
+        <table class="table table-condensed table-bordered table-hover">
             <thead>
                 <tr>
                     <th></th>
@@ -72,5 +72,6 @@
             {% endfor %}
         </table>
         {{ macros.render_pagination(g.pagination) }}
+    <p><small>Last updated: {{ g.last_updated }}</small></p>
 </div>
 {% endblock %}

@@ -170,7 +170,8 @@ class Player(db.Model, UserMixin):
                     (player_round_stats.c.frags == 5, 1),
                 ], else_=0)
             ).label('k5'),
-        ).select_from(player_round_stats).join(Round)
+        ).select_from(player_round_stats).join(Round).join(CsgoMatch,
+            and_(Round.match_id == CsgoMatch.id, CsgoMatch.end_time != None))
         return query
 
     @classmethod
