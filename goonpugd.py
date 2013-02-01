@@ -40,9 +40,9 @@ class GoonPugActionEvent(generic_events.BaseEvent):
         super(GoonPugActionEvent, self).__init__(timestamp)
         self.action = action
 
-    def __str__(self):
-        msg = 'GoonPUG triggered "%s"' % (self.action)
-        return ' '.join([super(GoonPugActionEvent, self).__str__(), msg])
+    def __unicode__(self):
+        msg = u'GoonPUG triggered "%s"' % (self.action)
+        return ' '.join([super(GoonPugActionEvent, self).__unicode__(), msg])
 
 
 class GoonPugParser(object):
@@ -103,7 +103,7 @@ class GoonPugParser(object):
         while True:
             event = None
             try:
-                event = self.eventq.get(False)
+                event = self.eventq.get(True, 5)
                 handler = self.event_handlers[type(event)]
                 handler(event)
                 self.eventq.task_done()
@@ -273,16 +273,13 @@ class GoonPugParser(object):
     def handle_change_map(self, event):
         self.players = {}
         if VERBOSE:
-            print str(event).decode('utf-8')
+            print event
         if event.started:
-            if isinstance(event.mapname, unicode):
-                self.mapname = event.mapname
-            else:
-                self.mapname = unicode(event.mapname, 'utf-8')
+            self.mapname = event.mapname
 
     def handle_enter_game(self, event):
         if VERBOSE:
-            print str(event).decode('utf-8')
+            print event
         steam_id = event.player.steam_id.id64()
         Player.get_or_create(steam_id, nickname=event.player.name)
         db.session.commit()
@@ -306,7 +303,7 @@ class GoonPugParser(object):
         if not self.round:
             return
         if VERBOSE:
-            print str(event).decode('utf-8')
+            print event
         steam_id = event.player.steam_id.id64()
         self.players[steam_id].alive = False
         player = Player.query.filter_by(steam_id=steam_id).first()
@@ -321,7 +318,7 @@ class GoonPugParser(object):
 
     def handle_disconnection(self, event):
         if VERBOSE:
-            print str(event).decode('utf-8')
+            print event
 
     def handle_kick(self, event):
         # the leaving part should be taken care of by handle_disconnection
@@ -331,7 +328,7 @@ class GoonPugParser(object):
         if not self.match:
             return
         if VERBOSE:
-            print str(event).decode('utf-8')
+            print event
         steam_id = event.player.steam_id.id64()
         if event.action == "Planted_The_Bomb":
             self.players[steam_id].bomb_planted = True
@@ -342,7 +339,7 @@ class GoonPugParser(object):
         if not self.match or not self.round:
             return
         if VERBOSE:
-            print str(event).decode('utf-8')
+            print event
         if event.action == "SFUI_Notice_Bomb_Defused":
             self._sfui_notice(event.team, defused=True)
         elif event.action == "SFUI_Notice_Target_Bombed":
@@ -356,7 +353,7 @@ class GoonPugParser(object):
         # look for 3 or more restarts within 5 seconds of each other.
         # assume that this is a lo3 (or loN)
         if VERBOSE:
-            print str(event).decode('utf-8')
+            print event
         if event.action.startswith('Restart_Round_'):
             self._abandon_match()
         elif event.action == 'Round_Start':
@@ -368,7 +365,7 @@ class GoonPugParser(object):
 
     def handle_goonpug_action(self, event):
         if VERBOSE:
-            print str(event).decode('utf-8')
+            print event
         if event.action == 'Start_Match':
             self._start_match(event.timestamp)
         elif event.action == 'End_Match':
@@ -380,7 +377,7 @@ class GoonPugParser(object):
 
     def handle_round_end_team(self, event):
         if VERBOSE:
-            print str(event).decode('utf-8')
+            print event
         if event.team == 'CT':
             self.ct_score = event.score
         elif event.team == 'TERRORIST':
@@ -390,7 +387,7 @@ class GoonPugParser(object):
         if not self.round:
             return
         if VERBOSE:
-            print str(event).decode('utf-8')
+            print event
         steam_id = event.player.steam_id.id64()
         target_id = event.target.steam_id.id64()
         self.players[target_id].alive = False
@@ -410,7 +407,7 @@ class GoonPugParser(object):
         if not self.round:
             return
         if VERBOSE:
-            print str(event).decode('utf-8')
+            print event
         steam_id = event.player.steam_id.id64()
         target_id = event.target.steam_id.id64()
         # RWS doesn't care about ff damage
@@ -429,13 +426,13 @@ class GoonPugParser(object):
         if not self.round:
             return
         if VERBOSE:
-            print str(event).decode('utf-8')
+            print event
         steam_id = event.player.steam_id.id64()
         self.players[steam_id].assists += 1
 
     def handle_switch_team(self, event):
         if VERBOSE:
-            print str(event).decode('utf-8')
+            print event
         steam_id = event.player.steam_id.id64()
         player = db.session.query(Player).filter_by(steam_id=steam_id).first()
         if not self.players.has_key(steam_id):
@@ -483,18 +480,19 @@ log_parsers = {}
 class GoonPugLogHandler(SocketServer.DatagramRequestHandler):
 
     def handle(self):
-        data = self.request[0].strip()
+        data = self.request[0]
         # Strip the 4-byte header and the first 'R' character
         #
         # There is no documentation for this but I am guessing the 'R' stands
         # for 'Remote'? Either way normal log entires are supposed to start
         # with 'L', but the UDP packets start with 'RL'
-        data = data[5:]
+        data = data[5:].strip()
         socket = self.request[1]
         if not log_parsers.has_key(self.client_address):
             parser = GoonPugParser(self.client_address)
             thread = threading.Thread(target=parser.process_events)
             log_parsers[self.client_address] = (thread, parser)
+            thread.daemon = True
             thread.start()
         log_parsers[self.client_address][1].parse_line(data)
 

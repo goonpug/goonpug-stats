@@ -34,14 +34,14 @@ class Player(db.Model, UserMixin):
 
     @staticmethod
     def get_or_create(steam_id, nickname=None):
-        if isinstance(steam_id, str):
+        if isinstance(steam_id, str) or isinstance(steam_id, unicode):
             steam_id = SteamId(steam_id).id64()
         player = Player.query.filter_by(steam_id=steam_id).first()
         if player is None:
             player = Player()
             player.steam_id = steam_id
             if nickname:
-                player.nickname = nickname
+                player.nickname = nickname.encode('utf-8')
             db.session.add(player)
         return player
 

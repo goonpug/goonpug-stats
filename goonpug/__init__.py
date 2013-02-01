@@ -31,7 +31,7 @@ if os.environ.has_key('GOONPUG_CONFIG'):
 elif os.path.isfile(os.path.join(os.getcwd(), 'config.py')):
     app.config.from_pyfile(os.path.join(os.getcwd(), 'config.py'))
 
-app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql://%s:%s@%s:%d/%s' % (
+app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql://%s:%s@%s:%d/%s?charset=utf8' % (
     app.config['MYSQL_USER'], app.config['MYSQL_PASSWORD'],
     app.config['MYSQL_SERVER'], app.config['MYSQL_PORT'],
     app.config['MYSQL_DATABASE'],)
