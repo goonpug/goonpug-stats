@@ -21,6 +21,7 @@ from flask import Flask
 from flask.ext.sqlalchemy import SQLAlchemy
 from flask.ext.login import LoginManager
 from flask.ext.openid import OpenID
+from openid.fetchers import setDefaultFetcher, Urllib2Fetcher
 
 
 app = Flask(__name__)
@@ -44,6 +45,7 @@ metadata.bind = db.engine
 # Login stuff
 login_manager = LoginManager()
 login_manager.setup_app(app)
+setDefaultFetcher(Urllib2Fetcher())
 oid = OpenID(app)
 
 from . import models, views
