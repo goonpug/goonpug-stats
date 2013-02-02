@@ -245,13 +245,19 @@ class GoonPugParser(object):
         for player in self.players.values():
             if self.round.winning_team == CsgoMatch.TEAM_A \
                     and player.steam_id.id64() in self.team_a:
+                # player won
                 team_damage += player.damage
                 team_players.append(player)
             elif self.round.winning_team == CsgoMatch.TEAM_B \
                     and player.steam_id.id64() in self.team_b:
+                # player won
                 team_damage += player.damage
                 team_players.append(player)
-            if player not in team_players
+            if (self.round.winning_team == CsgoMatch.TEAM_A
+                    and player.steam_id.id64() not in self.team_a) \
+                    or (self.round.winning_team == CsgoMatch.TEAM_B
+                    and player.steam_id.id64() not in self.team_b):
+                # player lost
                 player.won_1v = 0
                 player.rws = 0.0
         if defused or exploded:
@@ -294,9 +300,9 @@ class GoonPugParser(object):
         live_ts = []
         live_cts = []
         for player in self.players.values():
-            if player.team == 'TERRORIST' and player.alive:
+            if player.team == 'TERRORIST' and player.alive and not player.dropped:
                 live_ts.append(player)
-            elif player.team == 'CT' and player.alive:
+            elif player.team == 'CT' and player.alive and not player.dropped:
                 live_cts.append(player)
         if len(live_ts) == 1 and live_ts[0].won_1v == 0:
             live_ts[0].won_1v = len(live_cts)
