@@ -22,7 +22,7 @@ from flask import g, session, json, flash, redirect, escape, render_template, \
 from flask.ext.login import login_user, logout_user
 from flask.ext.sqlalchemy import Pagination
 from werkzeug.urls import url_encode
-from sqlalchemy.exc import NoSuchTableError
+from sqlalchemy.exc import NoSuchTableError, NoResultFound
 
 from . import app, db, oid, login_manager, metadata
 from .models import Frag, CsgoMatch, Player, PlayerRound, Round, \
@@ -114,7 +114,10 @@ def player(player_id=None):
     if player_id:
         g.player = Player.query.get(player_id)
         query = Player.overall_stats().filter_by(id=player_id)
-        g.stats = query.one()
+        try:
+            g.stats = query.one()
+        except NoResultFound:
+            g.stats = None
     return render_template('player.html')
 
 @app.route('/stats/')
