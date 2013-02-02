@@ -22,7 +22,8 @@ from flask import g, session, json, flash, redirect, escape, render_template, \
 from flask.ext.login import login_user, logout_user
 from flask.ext.sqlalchemy import Pagination
 from werkzeug.urls import url_encode
-from sqlalchemy.exc import NoSuchTableError, NoResultFound
+from sqlalchemy.exc import NoSuchTableError
+from sqlalchemy.orm.exc import NoResultFound
 
 from . import app, db, oid, login_manager, metadata
 from .models import Frag, CsgoMatch, Player, PlayerRound, Round, \
