@@ -33,7 +33,7 @@ class GoonPugActionEvent(generic_events.BaseEvent):
 
     regex = ''.join([
         generic_events.BaseEvent.regex,
-        r'GoonPUG triggered "(?P<action>.*?)"',
+        ur'GoonPUG triggered "(?P<action>.*?)"',
     ])
 
     def __init__(self, timestamp, action):
@@ -139,9 +139,9 @@ class GoonPugParser(object):
         self.team_a = set()
         self.team_b = set()
         for player in self.players.values():
-            if player.team == 'TERRORIST':
+            if player.team == u'TERRORIST':
                 self.team_a.add(player.steam_id.id64())
-            elif player.team == 'CT':
+            elif player.team == u'CT':
                 self.team_b.add(player.steam_id.id64())
         self.period = 1
         self.t_score = 0
@@ -230,49 +230,48 @@ class GoonPugParser(object):
             self.period += 1
 
     def _sfui_notice(self, winning_team, defused=False, exploded=False):
-        if winning_team == 'TERRORIST':
-            if self.period % 2 == 0:
+        if winning_team == u'TERRORIST':
+            if self.period % 2 == 1:
                 self.round.winning_team = CsgoMatch.TEAM_A
             else:
                 self.round.winning_team = CsgoMatch.TEAM_B
+        elif winning_team == u'CT':
+            if self.period % 2 == 1:
+                self.round.winning_team = CsgoMatch.TEAM_B
+            else:
+                self.round.winning_team = CsgoMatch.TEAM_A
         else:
-            if self.period % 2 == 0:
-                self.round.winning_team = CsgoMatch.TEAM_B
-            else:
-                self.round.winning_team = CsgoMatch.TEAM_A
+            raise ValueError(u'Unknown team: %s' % winning_team)
         team_damage = 0
         team_players = []
         for player in self.players.values():
-            if self.round.winning_team == CsgoMatch.TEAM_A \
-                    and player.steam_id.id64() in self.team_a:
-                # player won
-                team_damage += player.damage
-                team_players.append(player)
-            elif self.round.winning_team == CsgoMatch.TEAM_B \
-                    and player.steam_id.id64() in self.team_b:
-                # player won
-                team_damage += player.damage
-                team_players.append(player)
-            if (self.round.winning_team == CsgoMatch.TEAM_A
-                    and player.steam_id.id64() not in self.team_a) \
+            if player.dropped:
+                player.won_1v = 0
+                player.rws = 0.0
+            if not player.dropped and \
+                    ((self.round.winning_team == CsgoMatch.TEAM_A
+                    and player.steam_id.id64() in self.team_a) \
                     or (self.round.winning_team == CsgoMatch.TEAM_B
-                    and player.steam_id.id64() not in self.team_b):
-                # player lost
+                    and player.steam_id.id64() in self.team_b)):
+                team_damage += player.damage
+                team_players.append(player)
+            else:
                 player.won_1v = 0
                 player.rws = 0.0
         if defused or exploded:
             multi = 70.0
         else:
             multi = 100.0
-        for player in team_players:
-            try:
-                player.rws = multi * (player.damage / team_damage)
-            except ZeroDivisionError:
-                player.rws = 0.0
-            if defused and player.bomb_defused:
-                player.rws += 30.0
-            if exploded and player.bomb_planted:
-                player.rws += 30.0
+        for player in self.players.values():
+            if player.team == winning_team:
+                try:
+                    player.rws = multi * (player.damage / team_damage)
+                except ZeroDivisionError:
+                    player.rws = 0.0
+                if defused and player.bomb_defused:
+                    player.rws += 30.0
+                if exploded and player.bomb_planted:
+                    player.rws += 30.0
 
     def handle_log_file(self, event):
         self.players = {}
@@ -300,9 +299,9 @@ class GoonPugParser(object):
         live_ts = []
         live_cts = []
         for player in self.players.values():
-            if player.team == 'TERRORIST' and player.alive and not player.dropped:
+            if player.team == u'TERRORIST' and player.alive and not player.dropped:
                 live_ts.append(player)
-            elif player.team == 'CT' and player.alive and not player.dropped:
+            elif player.team == u'CT' and player.alive and not player.dropped:
                 live_cts.append(player)
         if len(live_ts) == 1 and live_ts[0].won_1v == 0:
             live_ts[0].won_1v = len(live_cts)
@@ -350,13 +349,13 @@ class GoonPugParser(object):
             return
         if VERBOSE:
             print event
-        if event.action == "SFUI_Notice_Bomb_Defused":
+        if event.action == u"SFUI_Notice_Bomb_Defused":
             self._sfui_notice(event.team, defused=True)
-        elif event.action == "SFUI_Notice_Target_Bombed":
+        elif event.action == u"SFUI_Notice_Target_Bombed":
             self._sfui_notice(event.team, exploded=True)
-        elif event.action == "SFUI_Notice_Terrorists_Win" \
-                or event.action == "SFUI_Notice_CTs_Win" \
-                or event.action == "SFUI_Notice_Target_Saved":
+        elif event.action == u"SFUI_Notice_Terrorists_Win" \
+                or event.action == u"SFUI_Notice_CTs_Win" \
+                or event.action == u"SFUI_Notice_Target_Saved":
             self._sfui_notice(event.team)
 
     def handle_world_action(self, event):
@@ -364,33 +363,33 @@ class GoonPugParser(object):
         # assume that this is a lo3 (or loN)
         if VERBOSE:
             print event
-        if event.action.startswith('Restart_Round_'):
+        if event.action.startswith(u'Restart_Round_'):
             self._abandon_match()
-        elif event.action == 'Round_Start':
+        elif event.action == u'Round_Start':
             if self.match:
                 self._start_round()
-        elif event.action == 'Round_End':
+        elif event.action == u'Round_End':
             if self.match:
                 self._end_round(event)
 
     def handle_goonpug_action(self, event):
         if VERBOSE:
             print event
-        if event.action == 'Start_Match':
+        if event.action == u'Start_Match':
             self._start_match(event.timestamp)
-        elif event.action == 'End_Match':
+        elif event.action == u'End_Match':
             self._end_match(event)
-        elif event.action == 'Abandon_Match':
+        elif event.action == u'Abandon_Match':
             self._abandon_match()
-        elif event.action == 'Start_Warmup' and self.match:
+        elif event.action == u'Start_Warmup' and self.match:
             self._abandon_match()
 
     def handle_round_end_team(self, event):
         if VERBOSE:
             print event
-        if event.team == 'CT':
+        if event.team == u'CT':
             self.ct_score = event.score
-        elif event.team == 'TERRORIST':
+        elif event.team == u'TERRORIST':
             self.t_score = event.score
 
     def handle_kill(self, event):
@@ -459,28 +458,28 @@ class GoonPugParser(object):
             self.players[steam_id].bomb_planted = False
             self.players[steam_id].won_1v = 0
         if self.match:
-            if event.new_team == 'Unassigned' \
-                    and event.orig_team in ['CT', 'TERRORIST']:
+            if event.new_team == u'Unassigned' \
+                    and event.orig_team in [u'CT', u'TERRORIST']:
                 self.players[steam_id].dropped = True
                 self.players[steam_id].alive = False
                 self._check_1v()
-            else:
+            elif steam_id not in self.team_a and steam_id not in self.team_b:
                 if (self.period % 2) == 1:
-                    if event.new_team == 'TERRORIST':
+                    if event.new_team == u'TERRORIST':
                         self.team_a.add(steam_id)
                         self.team_b.discard(steam_id)
-                    elif event.new_team == 'CT':
+                    elif event.new_team == u'CT':
                         self.team_b.add(steam_id)
                         self.team_a.discard(steam_id)
                 else:
-                    if event.new_team == 'TERRORIST':
+                    if event.new_team == u'TERRORIST':
                         self.team_b.add(steam_id)
                         self.team_a.discard(steam_id)
-                    elif event.new_team == 'CT':
+                    elif event.new_team == u'CT':
                         self.team_a.add(steam_id)
                         self.team_b.discard(steam_id)
         else:
-            if event.new_team == 'Unassigned':
+            if event.new_team == u'Unassigned':
                 del self.players[steam_id]
 
 
