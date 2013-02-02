@@ -34,6 +34,7 @@
                     <th><a href="#" rel="tooltip" title="Average Round Win Shares">RWS</a></th>
                 </tr>
             </thead>
+            {% if g.stats %}
             <tr>
                 <td>{{ g.stats.rounds_won + g.stats.rounds_lost }}</td>
                 <td>{{ g.stats.rounds_won }} </td>
@@ -72,6 +73,7 @@
                 {% endif %}
                 <td>{{ "%.1f"|format(g.stats.rws) }}</td>
             </tr>
+            {% endif %}
         </table>
     </div>
 </div>

@@ -111,9 +111,10 @@ def logout():
 
 @app.route('/player/<int:player_id>')
 def player(player_id=None):
-    g.player = Player.query.get(player_id)
-    query = Player.overall_stats().filter_by(id=player_id)
-    g.stats = query.one()
+    if player_id:
+        g.player = Player.query.get(player_id)
+        query = Player.overall_stats().filter_by(id=player_id)
+        g.stats = query.one()
     return render_template('player.html')
 
 @app.route('/stats/')
