@@ -87,13 +87,14 @@ def login():
 
 @oid.after_login
 def create_or_login(resp):
+    print resp.identity_url
     match = _steam_id_re.search(resp.identity_url)
     g.user = Player.get_or_create(int(match.group(1)))
     steam_data = get_steam_userinfo(g.user.steam_id)
     g.user.nickname = steam_data['personaname']
     db.session.commit()
     login_user(g.user)
-    flash('You are now logged in')
+    flash(u'You are now logged in')
     return redirect(oid.get_next_url())
 
 @app.before_request
@@ -104,7 +105,7 @@ def before_request():
 
 @app.route('/logout')
 def logout():
-    flash('You are now logged out')
+    flash(u'You are now logged out')
     logout_user()
     return redirect(oid.get_next_url())
 
@@ -115,7 +116,7 @@ def player(player_id=None):
     g.stats = query.one()
     return render_template('player.html')
 
-@app.route('/stats')
+@app.route('/stats/')
 @app.route('/stats/<int:page>')
 def stats(page=1):
     query = Player.overall_stats().filter('rounds_won + rounds_lost >= 75')
