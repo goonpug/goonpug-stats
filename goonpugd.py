@@ -251,9 +251,8 @@ class GoonPugParser(object):
                     and player.steam_id.id64() in self.team_b:
                 team_damage += player.damage
                 team_players.append(player)
-            else:
-                if player.won_1v != 0:
-                    player.won_1v = 0
+            if player not in team_players
+                player.won_1v = 0
                 player.rws = 0.0
         if defused or exploded:
             multi = 70.0
