@@ -150,6 +150,7 @@ def stats():
     return render_template('stats.html')
 
 @app.route('/stats/player/')
+@app.route('/stats/player/<int:page>')
 @app.route('/stats/player/sort/<sort_by>/')
 @app.route('/stats/player/sort/<sort_by>/<int:page>')
 @app.route('/stats/player/sort/<sort_by>/order/<sort_order>/')
