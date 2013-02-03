@@ -20,9 +20,6 @@ from goonpug.models import CsgoMatch, Round, Player, PlayerRound, Frag, \
         match_players, Server
 
 
-VERBOSE = False
-
-
 class GoonPugPlayer(BasePlayer):
     pass
 
@@ -49,7 +46,9 @@ class GoonPugParser(object):
 
     """GoonPUG log parser class"""
 
-    def __init__(self, server_address):
+    def __init__(self, server_address, verbose=False, force=False):
+        self.verbose = verbose
+        self.force = force
         self.eventq = Queue(100)
         self.event_handlers = {
             generic_events.LogFileEvent: self.handle_log_file,
@@ -126,8 +125,12 @@ class GoonPugParser(object):
         match = CsgoMatch.query.filter_by(server_id=self.server.id,
             start_time=timestamp).first()
         if match:
-            db.session.delete(match)
-            db.session.commit()
+            if self.force:
+                db.session.delete(match)
+                db.session.commit()
+            else:
+                self.match=None
+                return
         self.match = CsgoMatch()
         # we only support pugs right now
         self.match.type = CsgoMatch.TYPE_PUG
@@ -281,14 +284,14 @@ class GoonPugParser(object):
 
     def handle_change_map(self, event):
         self.players = {}
-        if VERBOSE:
-            print event
+        if self.verbose:
+            print unicode(event)
         if event.started:
             self.mapname = event.mapname
 
     def handle_enter_game(self, event):
-        if VERBOSE:
-            print event
+        if self.verbose:
+            print unicode(event)
         steam_id = event.player.steam_id.id64()
         Player.get_or_create(steam_id, nickname=event.player.name)
         db.session.commit()
@@ -311,8 +314,8 @@ class GoonPugParser(object):
     def handle_suicide(self, event):
         if not self.round:
             return
-        if VERBOSE:
-            print event
+        if self.verbose:
+            print unicode(event)
         steam_id = event.player.steam_id.id64()
         self.players[steam_id].alive = False
         player = Player.query.filter_by(steam_id=steam_id).first()
@@ -326,8 +329,8 @@ class GoonPugParser(object):
         self._check_1v()
 
     def handle_disconnection(self, event):
-        if VERBOSE:
-            print event
+        if self.verbose:
+            print unicode(event)
 
     def handle_kick(self, event):
         # the leaving part should be taken care of by handle_disconnection
@@ -336,8 +339,8 @@ class GoonPugParser(object):
     def handle_player_action(self, event):
         if not self.match:
             return
-        if VERBOSE:
-            print event
+        if self.verbose:
+            print unicode(event)
         steam_id = event.player.steam_id.id64()
         if event.action == "Planted_The_Bomb":
             self.players[steam_id].bomb_planted = True
@@ -347,8 +350,8 @@ class GoonPugParser(object):
     def handle_team_action(self, event):
         if not self.match or not self.round:
             return
-        if VERBOSE:
-            print event
+        if self.verbose:
+            print unicode(event)
         if event.action == u"SFUI_Notice_Bomb_Defused":
             self._sfui_notice(event.team, defused=True)
         elif event.action == u"SFUI_Notice_Target_Bombed":
@@ -361,8 +364,8 @@ class GoonPugParser(object):
     def handle_world_action(self, event):
         # look for 3 or more restarts within 5 seconds of each other.
         # assume that this is a lo3 (or loN)
-        if VERBOSE:
-            print event
+        if self.verbose:
+            print unicode(event)
         if event.action.startswith(u'Restart_Round_'):
             self._abandon_match()
         elif event.action == u'Round_Start':
@@ -373,20 +376,21 @@ class GoonPugParser(object):
                 self._end_round(event)
 
     def handle_goonpug_action(self, event):
-        if VERBOSE:
-            print event
+        if self.verbose:
+            print unicode(event)
         if event.action == u'Start_Match':
             self._start_match(event.timestamp)
         elif event.action == u'End_Match':
-            self._end_match(event)
+            if self.match:
+                self._end_match(event)
         elif event.action == u'Abandon_Match':
             self._abandon_match()
         elif event.action == u'Start_Warmup' and self.match:
             self._abandon_match()
 
     def handle_round_end_team(self, event):
-        if VERBOSE:
-            print event
+        if self.verbose:
+            print unicode(event)
         if event.team == u'CT':
             self.ct_score = event.score
         elif event.team == u'TERRORIST':
@@ -395,8 +399,8 @@ class GoonPugParser(object):
     def handle_kill(self, event):
         if not self.round:
             return
-        if VERBOSE:
-            print event
+        if self.verbose:
+            print unicode(event)
         steam_id = event.player.steam_id.id64()
         target_id = event.target.steam_id.id64()
         self.players[target_id].alive = False
@@ -415,8 +419,8 @@ class GoonPugParser(object):
     def handle_attack(self, event):
         if not self.round:
             return
-        if VERBOSE:
-            print event
+        if self.verbose:
+            print unicode(event)
         steam_id = event.player.steam_id.id64()
         target_id = event.target.steam_id.id64()
         # RWS doesn't care about ff damage
@@ -434,14 +438,14 @@ class GoonPugParser(object):
     def handle_assist(self, event):
         if not self.round:
             return
-        if VERBOSE:
-            print event
+        if self.verbose:
+            print unicode(event)
         steam_id = event.player.steam_id.id64()
         self.players[steam_id].assists += 1
 
     def handle_switch_team(self, event):
-        if VERBOSE:
-            print event
+        if self.verbose:
+            print unicode(event)
         steam_id = event.player.steam_id.id64()
         player = db.session.query(Player).filter_by(steam_id=steam_id).first()
         if not self.players.has_key(steam_id):
@@ -498,7 +502,10 @@ class GoonPugLogHandler(SocketServer.DatagramRequestHandler):
         data = data[5:].strip()
         socket = self.request[1]
         if not log_parsers.has_key(self.client_address):
-            parser = GoonPugParser(self.client_address)
+            print u'Got new connection from {}'.format(self.client_address[0])
+            parser = GoonPugParser(self.client_address,
+                                   verbose=self.gp_verbose,
+                                   force=self.gp_force)
             thread = threading.Thread(target=parser.process_events)
             log_parsers[self.client_address] = (thread, parser)
             thread.daemon = True
@@ -516,20 +523,23 @@ class GoonPugLogHandler(SocketServer.DatagramRequestHandler):
 class GoonPugDaemon(Daemon):
 
     def __init__(self, pidfile, port=27500, stdout=sys.stdout, stderr=sys.stderr):
-        super(GoonPugDaemon, self).__init__(pidfile, stdout=stdout, stderr=stderr)
+        super(GoonPugDaemon, self).__init__(pidfile, stdout=stdout,
+                                            stderr=stderr, verbose=False,
+                                            force=False)
         self.port = port
         self.server = SocketServer.UDPServer(('0.0.0.0', self.port),
                                         GoonPugLogHandler)
         self.server.timeout = 30
+        self.server.gp_verbose=verbose
+        self.server.gp_force=force
 
     def run(self):
-        print "goonpugd: Listening for HL log connections on %s:%d" % (
+        print u"goonpugd: Listening for HL log connections on %s:%d" % (
             self.server.server_address)
         self.server.serve_forever()
 
 
 def main():
-    global VERBOSE
     parser = argparse.ArgumentParser(description='GoonPUG logparser')
     parser.add_argument('-p', '--port', dest='port', action='store', type=int,
                         default=27500, help='port to listen on')
@@ -544,16 +554,20 @@ def main():
     parser.add_argument('--server', action='store', dest='server_address',
                         help='server address (used with -s) in form of '
                              'IP:PORT')
+    parser.add_argument('-f', '--force', action='store_true', dest='force',
+                        help='forces overwriting of any matches that already '
+                             'exist in the database')
     parser.add_argument('-v', action='store_true', dest='verbose',
                         help='verbose output')
     args = parser.parse_args()
-    VERBOSE = args.verbose
+    verbose = args.verbose
+    force = args.force
     if args.stdin:
         if not args.server_address:
             parser.error('No server address specified')
         (host, port) = args.server_address.split(':', 1)
         port = int(port)
-        log_parser = GoonPugParser((host, port))
+        log_parser = GoonPugParser((host, port), verbose=verbose, force=force)
         print "goonpugd: Reading from STDIN"
         thread = threading.Thread(target=log_parser.process_events)
         thread.daemon = True
