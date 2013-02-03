@@ -55,7 +55,14 @@
               </p>
             <ul class="nav">
               <li class="active"><a href="{{ url_for('index') }}">Home</a></li>
-              <li class="active"><a href="{{ url_for('stats') }}">Stats</a></li>
+              <li class="dropdown">
+              <a class="dropdown-toggle" role="button" data-hover="dropdown" data-target="#" href="{{ url_for('stats') }}" >Stats <b class="caret"></b></a>
+                  <ul class="dropdown-menu" role="menu">
+                      <li><a href="{{ url_for('stats_player') }}">Player Stats</a></li>
+                      <li><a href="#">Map Stats</a></li>
+                      <li><a href="#">Weapon Stats</a></li>
+                  </ul>
+              </li>
             </ul>
           </div><!--/.nav-collapse -->
         </div>
@@ -90,6 +97,7 @@
 <!-- Placed at the end of the document so the pages load faster -->
 <script src="//ajax.googleapis.com/ajax/libs/jquery/1.9.0/jquery.min.js"></script>
 <script src="{{ url_for('static', filename='js/bootstrap.min.js') }}"></script>
+<script src="{{ url_for('static', filename='js/twitter-bootstrap-hover-dropdown.min.js') }}"></script>
 <script type="text/javascript">
     $(document).ready(function () {
         $("[rel=tooltip]").tooltip();

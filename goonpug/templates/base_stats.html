@@ -1,0 +1,9 @@
+{% extends "base.html" %}
+{% block body %}
+{% block stats_body %}
+{% endblock %}
+<div class="row">
+    <p class="pull-right"><small>Last updated: {{ last_updated() }}</small></p>
+    <p class="pull-left">*Players must have played at least 75 rounds to be ranked</p>
+</div>
+{% endblock %}

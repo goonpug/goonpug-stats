@@ -1,0 +1,84 @@
+{% extends "base_stats.html" %}
+{% import 'macros.html' as macros %}
+{% block stats_body %}
+<div class="row">
+    <div class="span4">
+        <h3>Individual Leaders</h3>
+        <table class="table table-condensed table-bordered">
+            <thead>
+                <tr><th colspan="3">Avg Round Win Shares</th></tr>
+            </thead>
+            {% for item in g.rws_leaders %}
+            <tr>
+                <td>{{ loop.index }}</td>
+                <td><a href="{{ url_for('player', player_id=item.player_id) }}">{{ item.nickname }}</a></td>
+                <td>{{ "%.1f"|format(item.rws) }}</td>
+            </tr>
+            {% endfor %}
+            <tr>
+                <td colspan="3"><a href="{{ url_for('stats_player', sort_by='rws') }}">Complete Leaders</a></td>
+            </tr>
+        </table>
+        <table class="table table-condensed table-bordered">
+            <thead>
+                <tr><th colspan="3">Kill:Death Ratio</th></tr>
+            </thead>
+            {% for item in g.kdr_leaders %}
+            <tr>
+                <td>{{ loop.index }}</td>
+                <td><a href="{{ url_for('player', player_id=item.player_id) }}">{{ item.nickname }}</a></td>
+                <td>{{ "%.2f"|format(item.kdr) }}</td>
+            </tr>
+            {% endfor %}
+            <tr>
+                <td colspan="3"><a href="{{ url_for('stats_player', sort_by='kdr') }}">Complete Leaders</a></td>
+            </tr>
+        </table>
+        <table class="table table-condensed table-bordered">
+            <thead>
+                <tr><th colspan="3">Aces</th></tr>
+            </thead>
+            {% for item in g.ace_leaders %}
+            <tr>
+                <td>{{ loop.index }}</td>
+                <td><a href="{{ url_for('player', player_id=item.player_id) }}">{{ item.nickname }}</a></td>
+                <td>{{ item.k5 }}</td>
+            </tr>
+            {% endfor %}
+            <tr>
+                <td colspan="3"><a href="{{ url_for('stats_player', sort_by='k5') }}">Complete Leaders</a></td>
+            </tr>
+        </table>
+    </div>
+    <div class="span4">
+        <h3>Map Leaders</h3>
+        <table class="table table-condensed table-bordered">
+            <thead>
+                <tr>
+                    <th>Map</th>
+                    <th>Player</th>
+                    <th>RWS</th>
+                </tr>
+            </thead>
+            <tr>
+                <td colspan="3"><a href="#">Complete Leaders</a></td>
+            </tr>
+        </table>
+    </div>
+    <div class="span4">
+        <h3>Weapon Leaders</h3>
+        <table class="table table-condensed table-bordered">
+            <thead>
+                <tr>
+                    <th>Weapon</th>
+                    <th>Player</th>
+                    <th>Kills</th>
+                </tr>
+            </thead>
+            <tr>
+                <td colspan="3"><a href="#">Complete Leaders</a></td>
+            </tr>
+        </table>
+    </div>
+</div>
+{% endblock %}

@@ -31,13 +31,6 @@ from .models import Frag, CsgoMatch, Player, PlayerRound, Round, \
 
 _steam_id_re = re.compile('steamcommunity.com/openid/id/(.*?)$')
 
-try:
-    player_overall_stats = db.Table('player_overall_stats', metadata,
-                db.Column('player_id', db.Integer, primary_key=True),
-                autoload=True)
-except NoSuchTableError:
-    pass
-
 def url_for_other_page(page):
     args = request.args.to_dict().copy()
     args['page'] = page
@@ -47,19 +40,26 @@ app.jinja_env.globals['url_for_other_page'] = url_for_other_page
 def sortable_th(display, title="", column_name=""):
     if not column_name:
         column_name = display.lower()
-    sort_by = request.args.get('sort_by', default='rws', type=str)
     sort_order = 'desc'
     ico = ''
-    if column_name == sort_by:
-        ico = 'icon-chevron-up'
-        if request.args.get('sort_order', default='desc', type=str) == 'desc':
+    if request.view_args.has_key('sort_by') \
+            and column_name == request.view_args['sort_by']:
+        ico = 'icon-chevron-down'
+        if request.view_args.has_key('sort_order') \
+                and request.view_args['sort_order'] == 'asc':
+            sort_order = 'desc'
+            ico = 'icon-chevron-up'
+        else:
             sort_order = 'asc'
-            ico = 'icon-chevron-down'
-    sort_by = column_name
-    return Markup('<th><a href="1?sort_by=%s&sort_order=%s" rel="tooltip" title="%s">'
-                  '<i class="%s"></i> %s</a></th>'% (column_name, sort_order, title,
-                                                     ico, display))
+    url = url_for(request.endpoint, sort_by=column_name, sort_order=sort_order)
+    return Markup('<th><a href="%s" rel="tooltip" title="%s">'
+                  '<i class="%s"></i> %s</a></th>'% (url, title, ico, display))
 app.jinja_env.globals['sortable_th'] = sortable_th
+
+def last_updated():
+    (last_updated,) = db.session.query(CsgoMatch.end_time).order_by(db.desc('end_time')).first()
+    return last_updated.strftime(u'%Y-%m-%d %H:%M:%S %Z')
+app.jinja_env.globals['last_updated'] = last_updated
 
 def get_steam_userinfo(steam_id):
     options = {
@@ -122,19 +122,46 @@ def player(player_id=None):
     return render_template('player.html')
 
 @app.route('/stats/')
-@app.route('/stats/<int:page>')
-def stats(page=1):
+def stats():
+    subquery = Player.overall_stats().filter(
+        'rounds_won + rounds_lost >= 75'
+    ).subquery()
+    g.rws_leaders = db.session.query(
+        subquery.c.nickname,
+        subquery.c.player_id,
+        subquery.c.rws
+    ).order_by(
+        db.desc('rws')
+    ).limit(5).all()
+    g.kdr_leaders = db.session.query(
+        subquery.c.nickname,
+        subquery.c.player_id,
+        subquery.c.kdr
+    ).order_by(
+        db.desc('kdr')
+    ).limit(5).all()
+    g.ace_leaders = db.session.query(
+        subquery.c.nickname,
+        subquery.c.player_id,
+        subquery.c.k5
+    ).filter('k5 > 0').order_by(
+        db.desc('k5')
+    ).limit(5).all()
+    return render_template('stats.html')
+
+@app.route('/stats/player/')
+@app.route('/stats/player/sort/<sort_by>/')
+@app.route('/stats/player/sort/<sort_by>/<int:page>')
+@app.route('/stats/player/sort/<sort_by>/order/<sort_order>/')
+@app.route('/stats/player/sort/<sort_by>/order/<sort_order>/<int:page>')
+def stats_player(page=1, sort_by='rws', sort_order='desc'):
     query = Player.overall_stats().filter('rounds_won + rounds_lost >= 75')
-    sort_by = request.args.get('sort_by', default='rws', type=str)
-    sort_order = request.args.get('sort_order', default='desc', type=str)
-    per_page = request.args.get('per_page', default=15, type=int)
+    per_page = 20
     if sort_order == 'asc':
         query = query.order_by(db.asc(sort_by))
-    elif sort_order == 'desc':
+    else:
         query = query.order_by(db.desc(sort_by))
     total = query.count()
     items = query.limit(per_page).offset((page - 1) * per_page).all()
     g.pagination = Pagination(query, page, per_page, total, items)
-    (last_updated,) = db.session.query(CsgoMatch.end_time).order_by(db.desc('end_time')).first()
-    g.last_updated = last_updated.strftime(u'%Y-%m-%d %H:%M:%S %Z')
     return render_template('stats_player.html')

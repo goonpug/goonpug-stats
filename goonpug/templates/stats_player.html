@@ -1,77 +1,76 @@
-{% extends "base.html" %}
+{% extends "base_stats.html" %}
 {% import 'macros.html' as macros %}
-{% block body %}
+{% block stats_body %}
+<h3>Overall Player Stats</h3>
 <div class="row">
-    <h1>Player Leaderboards</h1>
-        <table class="table table-condensed table-bordered table-hover">
-            <thead>
-                <tr>
-                    <th></th>
-                    <th>Player</th>
-                    {{ sortable_th('W', 'Rounds won', 'rounds_won') }}
-                    {{ sortable_th('L', 'Rounds Lost', 'rounds_lost') }}
-                    {{ sortable_th('K', 'Kills', 'frags') }}
-                    {{ sortable_th('D', 'Deaths', 'deaths') }}
-                    {{ sortable_th('KDR', 'Kill:Death Ratio', 'kdr') }}
-                    {{ sortable_th('3K', '3 Kill Rounds', 'k3') }}
-                    {{ sortable_th('4K', '4 Kill Rounds', 'k4') }}
-                    {{ sortable_th('5K', '5 Kill Rounds', 'k5') }}
-                    {{ sortable_th('1v1', '1v1 Wins', 'won_1v1') }}
-                    {{ sortable_th('v2', '1v2 Wins', 'won_1v2') }}
-                    {{ sortable_th('v3', '1v3 Wins', 'won_1v3') }}
-                    {{ sortable_th('v4', '1v4 Wins', 'won_1v4') }}
-                    {{ sortable_th('v5', '1v5 Wins', 'won_1v5') }}
-                    {{ sortable_th('HSP', 'Headshot Percentage') }}
-                    {{ sortable_th('ADR', 'Average Damage per Round') }}
-                    {{ sortable_th('KPR', 'Kills per Round', 'fpr') }}
-                    {{ sortable_th('RWS', 'Average Round Win Shares') }}
-                </tr>
-            </thead>
-            {% for item in g.pagination.items %}
+    <table class="table table-condensed table-bordered table-hover">
+        <thead>
             <tr>
-                {% if request.args.sort_order == 'asc' %}
-                <td>{{ g.pagination.total - (g.pagination.page - 1) * g.pagination.per_page - loop.index0 }}</td>
-                {% else %}
-                <td>{{ loop.index + (g.pagination.page - 1) * g.pagination.per_page }}</td>
-                {% endif %}
-                <td><a href="{{ url_for('player', player_id=item.player_id) }}">{{ item.nickname }}</a></td>
-                <td>{{ item.rounds_won }}</td>
-                <td>{{ item.rounds_lost }}</td>
-                <td>{{ item.frags }}</td>
-                <td>{{ item.deaths }}</td>
-                {% if item.kdr is none %}
-                <td>0.00</td>
-                {% else %}
-                <td>{{ "%.2f"|format(item.kdr) }}</td>
-                {% endif %}
-                <td>{{ item.k3 }}</td>
-                <td>{{ item.k4 }}</td>
-                <td>{{ item.k5 }}</td>
-                <td>{{ item.won_1v1 }}</td>
-                <td>{{ item.won_1v2 }}</td>
-                <td>{{ item.won_1v3 }}</td>
-                <td>{{ item.won_1v4 }}</td>
-                <td>{{ item.won_1v5 }}</td>
-                {% if item.hsp is none %}
-                <td>0.000</td>
-                {% else %}
-                <td>{{ "%.3f"|format(item.hsp) }}</td>
-                {% endif %}
-                {% if item.adr is none %}
-                <td>0.0</td>
-                {% else %}
-                <td>{{ "%.1f"|format(item.adr) }}</td>
-                {% endif %}
-                {% if item.fpr is none %}
-                <td>0.0</td>
-                {% else %}
-                <td>{{ "%.1f"|format(item.fpr) }}</td>
-                {% endif %}
-                <td>{{ "%.1f"|format(item.rws) }}</td>
+                <th></th>
+                <th>Player</th>
+                {{ sortable_th('W', 'Rounds won', 'rounds_won') }}
+                {{ sortable_th('L', 'Rounds Lost', 'rounds_lost') }}
+                {{ sortable_th('K', 'Kills', 'frags') }}
+                {{ sortable_th('D', 'Deaths', 'deaths') }}
+                {{ sortable_th('KDR', 'Kill:Death Ratio', 'kdr') }}
+                {{ sortable_th('3K', '3 Kill Rounds', 'k3') }}
+                {{ sortable_th('4K', '4 Kill Rounds', 'k4') }}
+                {{ sortable_th('5K', '5 Kill Rounds', 'k5') }}
+                {{ sortable_th('1v1', '1v1 Wins', 'won_1v1') }}
+                {{ sortable_th('v2', '1v2 Wins', 'won_1v2') }}
+                {{ sortable_th('v3', '1v3 Wins', 'won_1v3') }}
+                {{ sortable_th('v4', '1v4 Wins', 'won_1v4') }}
+                {{ sortable_th('v5', '1v5 Wins', 'won_1v5') }}
+                {{ sortable_th('HSP', 'Headshot Percentage') }}
+                {{ sortable_th('ADR', 'Average Damage per Round') }}
+                {{ sortable_th('KPR', 'Kills per Round', 'fpr') }}
+                {{ sortable_th('RWS', 'Average Round Win Shares') }}
             </tr>
-            {% endfor %}
-        </table>
-        {{ macros.render_pagination(g.pagination) }}
-    <p><small>Last updated: {{ g.last_updated }}</small></p>
+        </thead>
+        {% for item in g.pagination.items %}
+        <tr>
+            {% if request.view_args[sort_order] == 'asc' %}
+            <td>{{ g.pagination.total - (g.pagination.page - 1) * g.pagination.per_page - loop.index0 }}</td>
+            {% else %}
+            <td>{{ loop.index + (g.pagination.page - 1) * g.pagination.per_page }}</td>
+            {% endif %}
+            <td><a href="{{ url_for('player', player_id=item.player_id) }}">{{ item.nickname }}</a></td>
+            <td>{{ item.rounds_won }}</td>
+            <td>{{ item.rounds_lost }}</td>
+            <td>{{ item.frags }}</td>
+            <td>{{ item.deaths }}</td>
+            {% if item.kdr is none %}
+            <td>0.00</td>
+            {% else %}
+            <td>{{ "%.2f"|format(item.kdr) }}</td>
+            {% endif %}
+            <td>{{ item.k3 }}</td>
+            <td>{{ item.k4 }}</td>
+            <td>{{ item.k5 }}</td>
+            <td>{{ item.won_1v1 }}</td>
+            <td>{{ item.won_1v2 }}</td>
+            <td>{{ item.won_1v3 }}</td>
+            <td>{{ item.won_1v4 }}</td>
+            <td>{{ item.won_1v5 }}</td>
+            {% if item.hsp is none %}
+            <td>0.000</td>
+            {% else %}
+            <td>{{ "%.3f"|format(item.hsp) }}</td>
+            {% endif %}
+            {% if item.adr is none %}
+            <td>0.0</td>
+            {% else %}
+            <td>{{ "%.1f"|format(item.adr) }}</td>
+            {% endif %}
+            {% if item.fpr is none %}
+            <td>0.0</td>
+            {% else %}
+            <td>{{ "%.1f"|format(item.fpr) }}</td>
+            {% endif %}
+            <td>{{ "%.1f"|format(item.rws) }}</td>
+        </tr>
+        {% endfor %}
+    </table>
+    {{ macros.render_pagination(g.pagination) }}
 </div>
 {% endblock %}
