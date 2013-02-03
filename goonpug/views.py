@@ -32,7 +32,7 @@ from .models import Frag, CsgoMatch, Player, PlayerRound, Round, \
 _steam_id_re = re.compile('steamcommunity.com/openid/id/(.*?)$')
 
 def url_for_other_page(page):
-    args = request.args.to_dict().copy()
+    args = request.view_args.copy()
     args['page'] = page
     return url_for(request.endpoint, **args)
 app.jinja_env.globals['url_for_other_page'] = url_for_other_page
