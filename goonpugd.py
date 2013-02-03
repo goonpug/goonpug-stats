@@ -522,10 +522,10 @@ class GoonPugLogHandler(SocketServer.DatagramRequestHandler):
 
 class GoonPugDaemon(Daemon):
 
-    def __init__(self, pidfile, port=27500, stdout=sys.stdout, stderr=sys.stderr):
+    def __init__(self, pidfile, port=27500, stdout=sys.stdout,
+                 stderr=sys.stderr, verbose=False, force=False):
         super(GoonPugDaemon, self).__init__(pidfile, stdout=stdout,
-                                            stderr=stderr, verbose=False,
-                                            force=False)
+                                            stderr=stderr)
         self.port = port
         self.server = SocketServer.UDPServer(('0.0.0.0', self.port),
                                         GoonPugLogHandler)
