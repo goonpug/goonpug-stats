@@ -492,6 +492,9 @@ log_parsers = {}
 
 class GoonPugLogHandler(SocketServer.DatagramRequestHandler):
 
+    verbose = False
+    force = False
+
     def handle(self):
         data = self.request[0]
         # Strip the 4-byte header and the first 'R' character
@@ -504,8 +507,8 @@ class GoonPugLogHandler(SocketServer.DatagramRequestHandler):
         if not log_parsers.has_key(self.client_address):
             print u'Got new connection from {}'.format(self.client_address[0])
             parser = GoonPugParser(self.client_address,
-                                   verbose=self.gp_verbose,
-                                   force=self.gp_force)
+                                   verbose=GoonPugLogHandler.verbose,
+                                   force=GoonPugLogHandler.force)
             thread = threading.Thread(target=parser.process_events)
             log_parsers[self.client_address] = (thread, parser)
             thread.daemon = True
@@ -526,12 +529,12 @@ class GoonPugDaemon(Daemon):
                  stderr=sys.stderr, verbose=False, force=False):
         super(GoonPugDaemon, self).__init__(pidfile, stdout=stdout,
                                             stderr=stderr)
+        GoonPugLogHandler.verbose = verbose
+        GoonPugLogHandler.force = force
         self.port = port
         self.server = SocketServer.UDPServer(('0.0.0.0', self.port),
                                         GoonPugLogHandler)
         self.server.timeout = 30
-        self.server.gp_verbose=verbose
-        self.server.gp_force=force
 
     def run(self):
         print u"goonpugd: Listening for HL log connections on %s:%d" % (
