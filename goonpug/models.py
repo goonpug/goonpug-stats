@@ -63,7 +63,12 @@ class Player(db.Model, UserMixin):
             ).label('tks'),
             func.sum(
                 case([
-                    (and_(Frag.headshot == True, not_(Frag.tk)), 1),
+                    (not_(Attack.ff), 1),
+                ], else_=0)
+            ).label('hits'),
+            func.sum(
+                case([
+                    (and_(Attack.hitgroup == 'head', not_(Attack.ff)), 1),
                 ], else_=0)
             ).label('headshots'),
         ).select_from(
@@ -72,6 +77,10 @@ class Player(db.Model, UserMixin):
             Frag,
             and_(Frag.fragger == PlayerRound.player_id,
                  PlayerRound.round_id == Frag.round_id)
+        ).outerjoin(
+            Attack,
+            and_(Attack.attacker == PlayerRound.player_id,
+                 PlayerRound.round_id == Attack.round_id)
         ).group_by(PlayerRound.round_id, PlayerRound.player_id)
         return query
 
@@ -84,6 +93,7 @@ class Player(db.Model, UserMixin):
             Round.match_id,
             func.sum(player_round_stats.c.frags).label('frags'),
             func.sum(player_round_stats.c.tks).label('tks'),
+            func.sum(player_round_stats.c.hits).label('hits'),
             func.sum(player_round_stats.c.headshots).label('headshots'),
             func.sum(player_round_stats.c.assists).label('assists'),
             func.sum(
@@ -185,7 +195,7 @@ class Player(db.Model, UserMixin):
             subquery,
             Player.nickname,
             (subquery.c.frags / subquery.c.deaths).label('kdr'),
-            (subquery.c.headshots / subquery.c.frags).label('hsp'),
+            (subquery.c.headshots / subquery.c.hits).label('hsp'),
             (subquery.c.damage / (subquery.c.rounds_won + subquery.c.rounds_lost)).label('adr'),
             (subquery.c.frags / (subquery.c.rounds_won + subquery.c.rounds_lost)).label('fpr'),
         ).join(Player)
