@@ -271,6 +271,18 @@ class Frag(db.Model):
     tk = db.Column(db.Boolean, default=False)
 
 
+class Attack(db.Model):
+    id = db.Column(db.BigInteger, primary_key=True)
+    round_id = db.Column(db.Integer, db.ForeignKey('round.id'))
+    target = db.Column(db.Integer, db.ForeignKey('player.id'))
+    attacker = db.Column(db.Integer, db.ForeignKey('player.id'))
+    weapon = db.Column(db.Unicode(16), default=False)
+    damage = db.Column(db.Integer)
+    damage_armor = db.Column(db.Integer)
+    hitgroup = db.Column(db.Unicode(16), default=False)
+    ff = db.Column(db.Boolean, default=False)
+
+
 class PlayerRound(db.Model):
 
     player_id = db.Column(db.Integer, db.ForeignKey('player.id'),
@@ -299,6 +311,8 @@ class Round(db.Model):
     player_rounds = db.relationship('PlayerRound', backref='round',
                                     cascade='all, delete-orphan')
     frags = db.relationship('Frag', backref='round',
+                            cascade='all, delete-orphan')
+    attacks = db.relationship('Attack', backref='round',
                             cascade='all, delete-orphan')
     players = db.relationship('Player', backref='rounds',
                               secondary=PlayerRound.__table__,

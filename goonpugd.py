@@ -17,7 +17,7 @@ from daemon import Daemon
 
 from goonpug import db
 from goonpug.models import CsgoMatch, Round, Player, PlayerRound, Frag, \
-        match_players, Server
+        match_players, Server, Attack
 
 
 class GoonPugPlayer(BasePlayer):
@@ -200,9 +200,13 @@ class GoonPugParser(object):
         for frag in self.round_frags:
             frag.round_id = self.round.id
             db.session.add(frag)
+        for attack in self.round_attacks:
+            attack.round_id = self.round.id
+            db.session.add(attack)
         db.session.commit()
         self.round = None
         self.round_frags = []
+        self.round_attacks = []
 
     def _start_round(self):
         if self.round:
@@ -222,6 +226,7 @@ class GoonPugParser(object):
         self.round.match_id = self.match.id
         self.round.period = self.period
         self.round_frags = []
+        self.round_attacks = []
 
     def _end_round(self, event):
         rounds_played = self.t_score + self.ct_score
@@ -432,8 +437,18 @@ class GoonPugParser(object):
                 # target is dead, we have to adjust for overkill damage
                 self.players[steam_id].damage += self.players[target_id].health
         self.players[target_id].health = event.health
-        # don't set player alive flag here, it will be set in suicide or kill
-        # handling
+        attacker = Player.query.filter_by(steam_id=steam_id).first()
+        target = Player.query.filter_by(steam_id=target_id).first()
+        attack = Attack()
+        attack.attacker = attacker.id
+        attack.target = target.id
+        attack.weapon = event.weapon
+        attack.hitgroup = event.hitgroup
+        attack.damage = event.damage
+        attack.damage_armor = event.damage_armor
+        if event.player.team == event.target.team:
+            attack.ff = True
+        self.round_attacks.append(attack)
 
     def handle_assist(self, event):
         if not self.round:
