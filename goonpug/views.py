@@ -154,7 +154,7 @@ def stats():
 @app.route('/stats/player/sort/<sort_by>/order/<sort_order>/')
 @app.route('/stats/player/sort/<sort_by>/order/<sort_order>/<int:page>')
 def stats_player(page=1, sort_by='rws', sort_order='desc'):
-    query = Player.overall_stats(min_rounds=0)
+    query = Player.overall_stats(min_rounds=75)
     per_page = 20
     if sort_order == 'asc':
         query = query.order_by(db.asc(sort_by))
