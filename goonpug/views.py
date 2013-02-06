@@ -54,6 +54,8 @@ def sortable_th(display, title="", column_name=""):
             sort_order = 'asc'
     args['sort_by'] = column_name
     args['sort_order'] = sort_order
+    if args.has_key('page'):
+        args['page'] = 1
     url = url_for(request.endpoint, **args)
     return Markup('<th><a href="%s" rel="tooltip" title="%s">'
                   '<i class="%s"></i> %s</a></th>'% (url, title, ico, display))
