@@ -47,10 +47,11 @@ class Player(db.Model, UserMixin):
         return player
 
     @classmethod
-    def round_stats(cls):
-        """Return stats for all Rounds a Player has played in"""
+    def round_frags(cls):
+        """Return all of a Player's frags grouped by round"""
         query = db.session.query(
-            PlayerRound,
+            Frag.fragger.label('player_id'),
+            Frag.round_id,
             func.sum(
                 case([
                     (not_(Frag.tk), 1),
@@ -61,6 +62,59 @@ class Player(db.Model, UserMixin):
                     (and_(Frag.tk, not_(Frag.fragger == Frag.victim)), 1),
                 ], else_=0)
             ).label('tks'),
+        ).group_by(Frag.round_id, Frag.fragger)
+        return query
+
+    @classmethod
+    def match_frags(cls):
+        """Return all of a Player's frags grouped by match"""
+        player_round_frags = cls.round_frags().subquery()
+        query = db.session.query(
+            player_round_frags.c.player_id,
+            Round.match_id,
+            func.sum(player_round_frags.c.frags).label('frags'),
+            func.sum(player_round_frags.c.tks).label('tks'),
+            func.sum(
+                case([
+                    (player_round_frags.c.frags == 1, 1),
+                ], else_=0)
+            ).label('k1'),
+            func.sum(
+                case([
+                    (player_round_frags.c.frags == 2, 1),
+                ], else_=0)
+            ).label('k2'),
+            func.sum(
+                case([
+                    (player_round_frags.c.frags == 3, 1),
+                ], else_=0)
+            ).label('k3'),
+            func.sum(
+                case([
+                    (player_round_frags.c.frags == 4, 1),
+                ], else_=0)
+            ).label('k4'),
+            func.sum(
+                case([
+                    (player_round_frags.c.frags == 5, 1),
+                ], else_=0)
+            ).label('k5'),
+        ).select_from(
+            player_round_frags
+        ).join(
+            Round,
+            player_round_frags.c.round_id == Round.id
+        ).join(CsgoMatch,
+            and_(Round.match_id == CsgoMatch.id, CsgoMatch.end_time != None)
+        ).group_by(player_round_frags.c.player_id, Round.match_id)
+        return query
+
+    @classmethod
+    def round_hits(cls):
+        """Return all of a Player's hits grouped by round"""
+        query = db.session.query(
+            Attack.attacker.label('player_id'),
+            Attack.round_id,
             func.sum(
                 case([
                     (not_(Attack.ff), 1),
@@ -68,137 +122,185 @@ class Player(db.Model, UserMixin):
             ).label('hits'),
             func.sum(
                 case([
-                    (and_(Attack.hitgroup == 'head', not_(Attack.ff)), 1),
+                    (and_(not_(Attack.ff), Attack.hitgroup == 'head'), 1),
                 ], else_=0)
             ).label('headshots'),
-        ).select_from(
-            PlayerRound
-        ).outerjoin(
-            Frag,
-            and_(Frag.fragger == PlayerRound.player_id,
-                 PlayerRound.round_id == Frag.round_id)
-        ).outerjoin(
-            Attack,
-            and_(Attack.attacker == PlayerRound.player_id,
-                 PlayerRound.round_id == Attack.round_id)
-        ).group_by(PlayerRound.round_id, PlayerRound.player_id)
+        ).group_by(Attack.round_id, Attack.attacker)
         return query
 
     @classmethod
-    def total_stats(cls):
-        """Return stats for all CsgoMatches a Player has played in"""
-        player_round_stats = cls.round_stats().subquery()
+    def match_hits(cls):
+        """Return all of a Player's hits grouped by match"""
+        player_round_hits = cls.round_hits().subquery()
         query = db.session.query(
-            player_round_stats.c.player_id,
+            player_round_hits.c.player_id,
             Round.match_id,
-            func.sum(player_round_stats.c.frags).label('frags'),
-            func.sum(player_round_stats.c.tks).label('tks'),
-            func.sum(player_round_stats.c.hits).label('hits'),
-            func.sum(player_round_stats.c.headshots).label('headshots'),
-            func.sum(player_round_stats.c.assists).label('assists'),
+            func.sum(player_round_hits.c.hits).label('hits'),
+            func.sum(player_round_hits.c.headshots).label('headshots'),
+        ).select_from(
+            player_round_hits
+        ).join(
+            Round,
+            player_round_hits.c.round_id == Round.id
+        ).join(CsgoMatch,
+            and_(Round.match_id == CsgoMatch.id, CsgoMatch.end_time != None)
+        ).group_by(player_round_hits.c.player_id, Round.match_id)
+        return query
+
+    @classmethod
+    def match_stats(cls):
+        """Return stats for Player has played in grouped by match"""
+        player_match_frags = cls.match_frags().subquery()
+        player_match_hits = cls.match_hits().subquery()
+        player_match_rounds = db.session.query(
+            PlayerRound.player_id,
+            Round.match_id,
+            func.sum(PlayerRound.assists).label('assists'),
             func.sum(
                 case([
-                    (player_round_stats.c.dead, 1),
+                    (PlayerRound.dead, 1),
                 ], else_=0)
             ).label('deaths'),
-            func.sum(player_round_stats.c.damage).label('damage'),
+            func.sum(PlayerRound.damage).label('damage'),
             func.sum(
                 case([
-                    (player_round_stats.c.bomb_planted, 1),
+                    (PlayerRound.bomb_planted, 1),
                 ], else_=0)
             ).label('bomb_planted'),
             func.sum(
                 case([
-                    (player_round_stats.c.bomb_defused, 1),
+                    (PlayerRound.bomb_defused, 1),
                 ], else_=0)
             ).label('bomb_defused'),
-            func.avg(player_round_stats.c.rws).label('rws'),
+            func.sum(PlayerRound.rws).label('total_rws'),
             func.sum(
                 case([
-                    (and_(player_round_stats.c.team == Round.winning_team,
-                          not_(player_round_stats.c.dropped)), 1)
+                    (and_(PlayerRound.team == Round.winning_team,
+                          not_(PlayerRound.dropped)), 1)
                 ], else_=0)
             ).label('rounds_won'),
             func.sum(
                 case([
-                    (and_(player_round_stats.c.team != Round.winning_team,
-                          not_(player_round_stats.c.dropped)), 1)
+                    (and_(PlayerRound.team != Round.winning_team,
+                          not_(PlayerRound.dropped)), 1)
                 ], else_=0)
             ).label('rounds_lost'),
             func.sum(
                 case([
-                    (player_round_stats.c.dropped, 1)
+                    (PlayerRound.dropped, 1)
                 ], else_=0)
             ).label('rounds_dropped'),
             func.sum(
                 case([
-                    (player_round_stats.c.won_1v == 1, 1),
+                    (PlayerRound.won_1v == 1, 1),
                 ], else_=0)
             ).label('won_1v1'),
             func.sum(
                 case([
-                    (player_round_stats.c.won_1v == 2, 1),
+                    (PlayerRound.won_1v == 2, 1),
                 ], else_=0)
             ).label('won_1v2'),
             func.sum(
                 case([
-                    (player_round_stats.c.won_1v == 3, 1),
+                    (PlayerRound.won_1v == 3, 1),
                 ], else_=0)
             ).label('won_1v3'),
             func.sum(
                 case([
-                    (player_round_stats.c.won_1v == 4, 1),
+                    (PlayerRound.won_1v == 4, 1),
                 ], else_=0)
             ).label('won_1v4'),
             func.sum(
                 case([
-                    (player_round_stats.c.won_1v == 5, 1),
+                    (PlayerRound.won_1v == 5, 1),
                 ], else_=0)
             ).label('won_1v5'),
-            func.sum(
-                case([
-                    (player_round_stats.c.frags == 1, 1),
-                ], else_=0)
-            ).label('k1'),
-            func.sum(
-                case([
-                    (player_round_stats.c.frags == 2, 1),
-                ], else_=0)
-            ).label('k2'),
-            func.sum(
-                case([
-                    (player_round_stats.c.frags == 3, 1),
-                ], else_=0)
-            ).label('k3'),
-            func.sum(
-                case([
-                    (player_round_stats.c.frags == 4, 1),
-                ], else_=0)
-            ).label('k4'),
-            func.sum(
-                case([
-                    (player_round_stats.c.frags == 5, 1),
-                ], else_=0)
-            ).label('k5'),
-        ).select_from(player_round_stats).join(Round).join(CsgoMatch,
-            and_(Round.match_id == CsgoMatch.id, CsgoMatch.end_time != None))
+        ).select_from(PlayerRound).join(Round).join(CsgoMatch,
+            and_(Round.match_id == CsgoMatch.id, CsgoMatch.end_time != None)
+        ).group_by(PlayerRound.player_id, Round.match_id).subquery()
+        query = db.session.query(
+            player_match_rounds,
+            player_match_frags.c.frags,
+            player_match_frags.c.tks,
+            player_match_frags.c.k1,
+            player_match_frags.c.k2,
+            player_match_frags.c.k3,
+            player_match_frags.c.k4,
+            player_match_frags.c.k5,
+            player_match_hits.c.hits,
+            player_match_hits.c.headshots,
+        ).outerjoin(
+            player_match_frags,
+            and_(player_match_frags.c.player_id == player_match_rounds.c.player_id,
+                 player_match_frags.c.match_id == player_match_rounds.c.match_id)
+        ).outerjoin(
+            player_match_hits,
+            and_(player_match_hits.c.player_id == player_match_rounds.c.player_id,
+                 player_match_hits.c.match_id == player_match_rounds.c.match_id)
+        )
         return query
 
     @classmethod
-    def match_stats(cls, match_id=None):
-        return cls.total_stats().group_by('player_id', 'match_id')
-
-    @classmethod
-    def overall_stats(cls, match_id=None):
-        subquery = cls.total_stats().group_by('player_id').subquery()
+    def overall_stats(cls, min_rounds=0):
+        player_match_stats = cls.match_stats().subquery()
         query = db.session.query(
-            subquery,
+            player_match_stats.c.player_id,
             Player.nickname,
-            (subquery.c.frags / subquery.c.deaths).label('kdr'),
-            (subquery.c.headshots / subquery.c.hits).label('hsp'),
-            (subquery.c.damage / (subquery.c.rounds_won + subquery.c.rounds_lost)).label('adr'),
-            (subquery.c.frags / (subquery.c.rounds_won + subquery.c.rounds_lost)).label('fpr'),
-        ).join(Player)
+            func.sum(player_match_stats.c.frags).label('frags'),
+            func.sum(player_match_stats.c.tks).label('tks'),
+            func.sum(player_match_stats.c.assists).label('assists'),
+            func.sum(player_match_stats.c.deaths).label('deaths'),
+            func.sum(player_match_stats.c.bomb_planted).label('bomb_planted'),
+            func.sum(player_match_stats.c.bomb_defused).label('bomb_defused'),
+            func.sum(player_match_stats.c.rounds_won).label('rounds_won'),
+            func.sum(player_match_stats.c.rounds_lost).label('rounds_lost'),
+            func.sum(player_match_stats.c.rounds_dropped)\
+                .label('rounds_dropped'),
+            (
+                func.sum(player_match_stats.c.rounds_won)
+                + func.sum(player_match_stats.c.rounds_lost)
+            ).label('rounds_played'),
+            func.sum(player_match_stats.c.won_1v1).label('won_1v1'),
+            func.sum(player_match_stats.c.won_1v2).label('won_1v2'),
+            func.sum(player_match_stats.c.won_1v3).label('won_1v3'),
+            func.sum(player_match_stats.c.won_1v4).label('won_1v4'),
+            func.sum(player_match_stats.c.won_1v5).label('won_1v5'),
+            func.sum(player_match_stats.c.k1).label('k1'),
+            func.sum(player_match_stats.c.k2).label('k2'),
+            func.sum(player_match_stats.c.k3).label('k3'),
+            func.sum(player_match_stats.c.k4).label('k4'),
+            func.sum(player_match_stats.c.k5).label('k5'),
+            (
+                func.sum(player_match_stats.c.frags)
+                    / func.sum(player_match_stats.c.deaths)
+            ).label('kdr'),
+            (
+                func.sum(player_match_stats.c.headshots)
+                    / func.sum(player_match_stats.c.hits)
+            ).label('hsp'),
+            (
+                func.sum(player_match_stats.c.damage)
+                    / (func.sum(player_match_stats.c.rounds_won)
+                        + func.sum(player_match_stats.c.rounds_lost))
+            ).label('adr'),
+            (
+                func.sum(player_match_stats.c.frags)
+                    / (func.sum(player_match_stats.c.rounds_won)
+                        + func.sum(player_match_stats.c.rounds_lost))
+            ).label('fpr'),
+            (
+                func.sum(player_match_stats.c.total_rws)
+                    / (func.sum(player_match_stats.c.rounds_won)
+                        + func.sum(player_match_stats.c.rounds_lost)
+                        + func.sum(player_match_stats.c.rounds_dropped))
+            ).label('rws'),
+        ).join(
+            Player, player_match_stats.c.player_id == Player.id
+        ).group_by(
+            player_match_stats.c.player_id
+        ).having(
+            'rounds_played >= %d' % min_rounds
+        )
         return query
 
 

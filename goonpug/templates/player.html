@@ -62,15 +62,10 @@
                 {% if g.stats.frags == 0 %}
                 <td>0.000</td>
                 {% else %}
-                <td>{{ "%.3f"|format(g.stats.headshots / g.stats.frags) }}</td>
+                <td>{{ "%.3f"|format(g.stats.hsp) }}</td>
                 {% endif %}
-                {% if (g.stats.rounds_won + g.stats.rounds_lost) == 0 %}
-                <td>0.0</td>
-                <td>0.00</td>
-                {% else %}
-                <td>{{ "%.1f"|format(g.stats.damage / (g.stats.rounds_won + g.stats.rounds_lost)) }}</td>
-                <td>{{ "%.2f"|format(g.stats.frags / (g.stats.rounds_won + g.stats.rounds_lost)) }}</td>
-                {% endif %}
+                <td>{{ "%.1f"|format(g.stats.adr) }}</td>
+                <td>{{ "%.2f"|format(g.stats.fpr) }}</td>
                 <td>{{ "%.1f"|format(g.stats.rws) }}</td>
             </tr>
             {% endif %}

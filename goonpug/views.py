@@ -123,9 +123,7 @@ def player(player_id=None):
 
 @app.route('/stats/')
 def stats():
-    subquery = Player.overall_stats().filter(
-        'rounds_won + rounds_lost >= 75'
-    ).subquery()
+    subquery = Player.overall_stats(min_rounds=75).subquery()
     g.rws_leaders = db.session.query(
         subquery.c.nickname,
         subquery.c.player_id,
@@ -156,7 +154,7 @@ def stats():
 @app.route('/stats/player/sort/<sort_by>/order/<sort_order>/')
 @app.route('/stats/player/sort/<sort_by>/order/<sort_order>/<int:page>')
 def stats_player(page=1, sort_by='rws', sort_order='desc'):
-    query = Player.overall_stats().filter('rounds_won + rounds_lost >= 75')
+    query = Player.overall_stats(min_rounds=0)
     per_page = 20
     if sort_order == 'asc':
         query = query.order_by(db.asc(sort_by))
