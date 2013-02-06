@@ -18,7 +18,8 @@
 from __future__ import absolute_import
 from flask.ext.login import UserMixin
 from srcds.objects import SteamId
-from sqlalchemy import func, case, literal, not_, and_, or_, alias
+from sqlalchemy import func, case, literal, not_, and_, or_
+from sqlalchemy.orm import aliased
 
 from . import app, db, metadata
 
@@ -155,6 +156,7 @@ class Player(db.Model, UserMixin):
         player_match_rounds = db.session.query(
             PlayerRound.player_id,
             Round.match_id,
+            CsgoMatch.map,
             func.sum(PlayerRound.assists).label('assists'),
             func.sum(
                 case([
@@ -241,8 +243,12 @@ class Player(db.Model, UserMixin):
         return query
 
     @classmethod
-    def overall_stats(cls, min_rounds=0):
-        player_match_stats = cls.match_stats().subquery()
+    def total_stats(cls, *match_filters):
+        player_match_stats = cls.match_stats()
+        for arg in match_filters:
+            player_match_stats = player_match_stats.filter(arg)
+        print player_match_stats.all()
+        player_match_stats = player_match_stats.subquery()
         query = db.session.query(
             player_match_stats.c.player_id,
             Player.nickname,
@@ -296,11 +302,19 @@ class Player(db.Model, UserMixin):
             ).label('rws'),
         ).join(
             Player, player_match_stats.c.player_id == Player.id
-        ).group_by(
-            player_match_stats.c.player_id
-        ).having(
+        )
+        return query
+
+    @classmethod
+    def overall_stats(cls, min_rounds=0):
+        query = cls.total_stats().group_by('player_id').having(
             'rounds_played >= %d' % min_rounds
         )
+        return query
+
+    @classmethod
+    def map_stats(cls, mapname):
+        query = cls.total_stats("map = '%s'" % mapname).group_by('player_id')
         return query
 
 

@@ -38,6 +38,7 @@ def url_for_other_page(page):
 app.jinja_env.globals['url_for_other_page'] = url_for_other_page
 
 def sortable_th(display, title="", column_name=""):
+    args = request.view_args.copy()
     if not column_name:
         column_name = display.lower()
     sort_order = 'desc'
@@ -51,7 +52,9 @@ def sortable_th(display, title="", column_name=""):
             ico = 'icon-chevron-up'
         else:
             sort_order = 'asc'
-    url = url_for(request.endpoint, sort_by=column_name, sort_order=sort_order)
+    args['sort_by'] = column_name
+    args['sort_order'] = sort_order
+    url = url_for(request.endpoint, **args)
     return Markup('<th><a href="%s" rel="tooltip" title="%s">'
                   '<i class="%s"></i> %s</a></th>'% (url, title, ico, display))
 app.jinja_env.globals['sortable_th'] = sortable_th
@@ -145,6 +148,11 @@ def stats():
     ).filter('k5 > 0').order_by(
         db.desc('k5')
     ).limit(5).all()
+    maps = db.session.query(CsgoMatch.map).distinct().order_by('map')
+    g.map_leaders = []
+    for (mapname,) in maps:
+        leader = Player.map_stats(mapname=mapname).order_by(db.desc('rws')).first()
+        g.map_leaders.append((mapname, leader))
     return render_template('stats.html')
 
 @app.route('/stats/player/')
@@ -164,3 +172,31 @@ def stats_player(page=1, sort_by='rws', sort_order='desc'):
     items = query.limit(per_page).offset((page - 1) * per_page).all()
     g.pagination = Pagination(query, page, per_page, total, items)
     return render_template('stats_player.html')
+
+@app.route('/stats/map/')
+@app.route('/stats/map/<int:page>')
+@app.route('/stats/map/sort/<sort_by>/')
+@app.route('/stats/map/sort/<sort_by>/<int:page>')
+@app.route('/stats/map/sort/<sort_by>/order/<sort_order>/')
+@app.route('/stats/map/sort/<sort_by>/order/<sort_order>/<int:page>')
+@app.route('/stats/map/<mapname>/')
+@app.route('/stats/map/<mapname>/<int:page>')
+@app.route('/stats/map/<mapname>/sort/<sort_by>/')
+@app.route('/stats/map/<mapname>/sort/<sort_by>/<int:page>')
+@app.route('/stats/map/<mapname>/sort/<sort_by>/order/<sort_order>/')
+@app.route('/stats/map/<mapname>/sort/<sort_by>/order/<sort_order>/<int:page>')
+def stats_map(mapname='', page=1, sort_by='rws', sort_order='desc'):
+    g.maps = db.session.query(CsgoMatch.map).distinct().order_by('map')
+    if not mapname and g.maps:
+        (mapname,) = g.maps[0]
+    query = Player.map_stats(mapname=mapname)
+    per_page = 20
+    if sort_order == 'asc':
+        query = query.order_by(db.asc(sort_by))
+    else:
+        query = query.order_by(db.desc(sort_by))
+    total = query.count()
+    items = query.limit(per_page).offset((page - 1) * per_page).all()
+    g.pagination = Pagination(query, page, per_page, total, items)
+    g.mapname = mapname
+    return render_template('stats_map.html')

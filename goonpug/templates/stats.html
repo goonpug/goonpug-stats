@@ -60,6 +60,13 @@
                     <th>RWS</th>
                 </tr>
             </thead>
+            {% for mapname, item in g.map_leaders %}
+            <tr>
+                <td><a href="{{ url_for('stats_map', mapname=mapname) }}">{{ mapname }}</a></td>
+                <td><a href="{{ url_for('player', player_id=item.player_id) }}">{{ item.nickname }}</a></td>
+                <td>{{ "%.1f"|format(item.rws) }}</td>
+            </tr>
+            {% endfor %}
             <tr>
                 <td colspan="3"><a href="#">Complete Leaders</a></td>
             </tr>
