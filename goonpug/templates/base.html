@@ -54,13 +54,13 @@
               {% endif %}
               </p>
             <ul class="nav">
-              <li class="active"><a href="{{ url_for('index') }}">Home</a></li>
-              <li class="dropdown">
-              <a class="dropdown-toggle" role="button" data-hover="dropdown" data-target="#" href="{{ url_for('stats') }}" >Stats <b class="caret"></b></a>
+                <li {% if request.endpoint == 'index' %}class="active"{% endif %}><a href="{{ url_for('index') }}">Home</a></li>
+                <li class="dropdown {% if request.endpoint.startswith('stats') %} active {% endif %}">
+                  <a class="dropdown-toggle" role="button" data-hover="dropdown" data-target="#" href="{{ url_for('stats') }}" >Stats <b class="caret"></b></a>
                   <ul class="dropdown-menu" role="menu">
-                      <li><a href="{{ url_for('stats_player') }}">Player Stats</a></li>
-                      <li><a href="{{ url_for('stats_map') }}">Map Stats</a></li>
-                      <li><a href="#">Weapon Stats</a></li>
+                      <li {% if request.endpoint == 'stats_player' %}class="active disabled"{% endif %}><a href="{{ url_for('stats_player') }}">Player Stats</a></li>
+                      <li {% if request.endpoint == 'stats_map' %}class="active disabled"{% endif %}><a href="{{ url_for('stats_map') }}">Map Stats</a></li>
+                      <li {% if request.endpoint == 'stats_weapon' %}class="active disabled"{% endif %}><a href="{{ url_for('stats_weapon') }}">Weapon Stats</a></li>
                   </ul>
               </li>
             </ul>

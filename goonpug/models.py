@@ -247,7 +247,6 @@ class Player(db.Model, UserMixin):
         player_match_stats = cls.match_stats()
         for arg in match_filters:
             player_match_stats = player_match_stats.filter(arg)
-        print player_match_stats.all()
         player_match_stats = player_match_stats.subquery()
         query = db.session.query(
             player_match_stats.c.player_id,
@@ -316,6 +315,74 @@ class Player(db.Model, UserMixin):
     def map_stats(cls, mapname):
         query = cls.total_stats("map = '%s'" % mapname).group_by('player_id')
         return query
+
+    @classmethod
+    def weapon_kill_stats(cls, weapon):
+        frags_query = db.session.query(
+            Frag.fragger.label('player_id'),
+            Frag.weapon,
+            func.sum(
+                case([
+                    (not_(Frag.tk), 1),
+                ], else_=0)
+            ).label('frags'),
+        ).group_by(Frag.fragger, Frag.weapon).subquery()
+        hits_query = db.session.query(
+            Attack.attacker.label('player_id'),
+            Attack.weapon,
+            (
+                func.sum(
+                    case([
+                        (and_(not_(Attack.ff), Attack.hitgroup == 'head'), 1),
+                    ], else_=0)
+                ) / func.sum(
+                    case([
+                        (not_(Attack.ff), 1),
+                    ], else_=0)
+                )
+            ).label('hsp'),
+        ).group_by(Attack.weapon, Attack.attacker).subquery()
+        query = db.session.query(
+            frags_query.c.player_id,
+            Player.nickname,
+            frags_query.c.weapon,
+            frags_query.c.frags,
+            hits_query.c.hsp,
+        ).select_from(
+            frags_query
+        ).outerjoin(
+            hits_query,
+            and_(frags_query.c.player_id == hits_query.c.player_id,
+                 frags_query.c.weapon == hits_query.c.weapon)
+        ).join(
+            Player,
+            frags_query.c.player_id == Player.id
+        )
+        return query.filter(frags_query.c.weapon == weapon)
+
+    @classmethod
+    def weapon_death_stats(cls, weapon):
+        deaths_query = db.session.query(
+            Frag.victim.label('player_id'),
+            Frag.weapon,
+            func.sum(
+                case([
+                    (not_(Frag.tk), 1),
+                ], else_=0)
+            ).label('deaths'),
+        ).group_by(Frag.victim, Frag.weapon).subquery()
+        query = db.session.query(
+            deaths_query.c.player_id,
+            Player.nickname,
+            deaths_query.c.weapon,
+            deaths_query.c.deaths,
+        ).select_from(
+            deaths_query
+        ).join(
+            Player,
+            deaths_query.c.player_id == Player.id
+        )
+        return query.filter(deaths_query.c.weapon == weapon)
 
 
 class Server(db.Model):

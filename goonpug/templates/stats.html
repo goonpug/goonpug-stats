@@ -82,8 +82,17 @@
                     <th>Kills</th>
                 </tr>
             </thead>
+            {% for weapon, item in g.weapon_leaders %}
+            {% if item %}
             <tr>
-                <td colspan="3"><a href="#">Complete Leaders</a></td>
+                <td><a href="{{ url_for('stats_weapon', weapon=weapon) }}">{{ weapon }}</a></td>
+                <td><a href="{{ url_for('player', player_id=item.player_id) }}">{{ item.nickname }}</a></td>
+                <td>{{ item.frags }}</td>
+            </tr>
+            {% endif %}
+            {% endfor %}
+            <tr>
+                <td colspan="3"><a href="{{ url_for('stats_weapon') }}">Complete Leaders</a></td>
             </tr>
         </table>
     </div>

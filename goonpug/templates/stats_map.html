@@ -11,6 +11,8 @@
             {% for item in g.maps %}
             {% if item.map != g.mapname %}
             <li><a href="{{ url_for('stats_map', mapname=item.map) }}">{{ item.map }}</a></li>
+            {% else %}
+            <li class="disabled"><a href="#">{{ item.map }}</a></li>
             {% endif %}
             {% endfor %}
         </ul>

@@ -37,6 +37,12 @@ def url_for_other_page(page):
     return url_for(request.endpoint, **args)
 app.jinja_env.globals['url_for_other_page'] = url_for_other_page
 
+def url_for_other(**kwargs):
+    args = request.view_args.copy()
+    args.update(kwargs)
+    return url_for(request.endpoint, **args)
+app.jinja_env.globals['url_for_other'] = url_for_other
+
 def sortable_th(display, title="", column_name=""):
     args = request.view_args.copy()
     if not column_name:
@@ -93,7 +99,6 @@ def login():
 
 @oid.after_login
 def create_or_login(resp):
-    print resp.identity_url
     match = _steam_id_re.search(resp.identity_url)
     g.user = Player.get_or_create(int(match.group(1)))
     steam_data = get_steam_userinfo(g.user.steam_id)
@@ -155,6 +160,11 @@ def stats():
     for (mapname,) in maps:
         leader = Player.map_stats(mapname=mapname).order_by(db.desc('rws')).first()
         g.map_leaders.append((mapname, leader))
+    weapons = ['ak47', 'm4a1', 'awp', 'glock', 'p2000', 'p250', 'deagle', 'knife', 'taser']
+    g.weapon_leaders = []
+    for weapon in weapons:
+        leader = Player.weapon_kill_stats(weapon=weapon).order_by(db.desc('frags')).first()
+        g.weapon_leaders.append((weapon, leader))
     return render_template('stats.html')
 
 @app.route('/stats/player/')
@@ -202,3 +212,34 @@ def stats_map(mapname='', page=1, sort_by='rws', sort_order='desc'):
     g.pagination = Pagination(query, page, per_page, total, items)
     g.mapname = mapname
     return render_template('stats_map.html')
+
+@app.route('/stats/weapon/')
+@app.route('/stats/weapon/<int:page>')
+@app.route('/stats/weapon/sort/<sort_by>/')
+@app.route('/stats/weapon/sort/<sort_by>/<int:page>')
+@app.route('/stats/weapon/sort/<sort_by>/order/<sort_order>/')
+@app.route('/stats/weapon/sort/<sort_by>/order/<sort_order>/<int:page>')
+@app.route('/stats/weapon/<weapon>/')
+@app.route('/stats/weapon/<weapon>/<int:page>')
+@app.route('/stats/weapon/<weapon>/sort/<sort_by>/')
+@app.route('/stats/weapon/<weapon>/sort/<sort_by>/<int:page>')
+@app.route('/stats/weapon/<weapon>/sort/<sort_by>/order/<sort_order>/')
+@app.route('/stats/weapon/<weapon>/sort/<sort_by>/order/<sort_order>/<int:page>')
+def stats_weapon(weapon='', page=1, sort_by='frags', sort_order='desc'):
+    g.weapons = db.session.query(Frag.weapon).distinct().order_by('weapon')
+    if not weapon and g.weapons:
+        (weapon,) = g.weapons[0]
+    if sort_by == 'deaths':
+        query = Player.weapon_death_stats(weapon=weapon)
+    else:
+        query = Player.weapon_kill_stats(weapon=weapon)
+    per_page = 20
+    if sort_order == 'asc':
+        query = query.order_by(db.asc(sort_by))
+    else:
+        query = query.order_by(db.desc(sort_by))
+    total = query.count()
+    items = query.limit(per_page).offset((page - 1) * per_page).all()
+    g.pagination = Pagination(query, page, per_page, total, items)
+    g.weapon = weapon
+    return render_template('stats_weapon.html')

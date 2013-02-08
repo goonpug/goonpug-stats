@@ -1,0 +1,71 @@
+{% extends "base_stats.html" %}
+{% import 'macros.html' as macros %}
+{% block stats_body %}
+<h3>Weapon Stats for:
+    <div class="btn-group">
+        <a class="btn dropdown-toggle" data-toggle="dropdown" href="#">
+            {{ g.weapon }}
+            <span class="caret"></span>
+        </a>
+        <ul class="dropdown-menu">
+            {% for item in g.weapons %}
+            {% if item.weapon != g.weapon %}
+            <li><a href="{{ url_for_other(weapon=item.weapon) }}">{{ item.weapon }}</a></li>
+            {% else %}
+            <li class="disabled"><a href="#">{{ item.weapon }}</a></li>
+            {% endif %}
+            {% endfor %}
+        </ul>
+    </div>
+</h3>
+<div class="row">
+    <ul class="nav nav-tabs">
+        {% if request.view_args.sort_by == 'deaths' %}
+        <li><a href="{{ url_for_other(sort_by='frags') }}">Kill Stats</a></li>
+        <li class="active"><a href="#">Death Stats</a></li>
+        {% else %}
+        <li class="active"><a href="#">Kill Stats</a></li>
+        <li><a href="{{ url_for_other(sort_by='deaths') }}">Death Stats</a></li>
+        {% endif %}
+    </ul>
+</div>
+<div class="row">
+    <table class="table table-condensed table-bordered table-hover">
+        <thead>
+            <tr>
+                <th></th>
+                <th>Player</th>
+                {% if request.view_args.sort_by == 'deaths' %}
+                    {{ sortable_th('D', 'Deaths', 'deaths') }}
+                {% else %}
+                    {{ sortable_th('K', 'Kills', 'frags') }}
+                    {{ sortable_th('HSP', 'Headshot Percentage') }}
+                {% endif %}
+            </tr>
+        </thead>
+        {% for item in g.pagination.items %}
+        <tr>
+            {% if request.view_args[sort_order] == 'asc' %}
+                <td>{{ g.pagination.total - (g.pagination.page - 1) * g.pagination.per_page - loop.index0 }}</td>
+            {% else %}
+                <td>{{ loop.index + (g.pagination.page - 1) * g.pagination.per_page }}</td>
+            {% endif %}
+
+            <td><a href="{{ url_for('player', player_id=item.player_id) }}">{{ item.nickname }}</a></td>
+
+            {% if request.view_args.sort_by == 'deaths' %}
+                <td>{{ item.deaths }}</td>
+            {% else %}
+                <td>{{ item.frags }}</td>
+                {% if item.hsp is none %}
+                    <td>0.000</td>
+                {% else %}
+                    <td>{{ "%.3f"|format(item.hsp) }}</td>
+                {% endif %}
+            {% endif %}
+        </tr>
+        {% endfor %}
+    </table>
+    {{ macros.render_pagination(g.pagination) }}
+</div>
+{% endblock %}
