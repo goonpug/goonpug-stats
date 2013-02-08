@@ -293,6 +293,9 @@ class GoonPugParser(object):
             print unicode(event)
         if event.started:
             self.mapname = event.mapname
+            match = re.match(ur'^workshop/\d*/(?P<mapname>.*)', self.mapname)
+            if match:
+                self.mapname = match.group_dict()['mapname']
 
     def handle_enter_game(self, event):
         if self.verbose:
