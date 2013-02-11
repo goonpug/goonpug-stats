@@ -83,7 +83,7 @@
                 </tr>
             </thead>
             {% for weapon, item in g.weapon_leaders %}
-            {% if item %}
+            {% if item not none %}
             <tr>
                 <td><a href="{{ url_for('stats_weapon', weapon=weapon) }}">{{ weapon }}</a></td>
                 <td><a href="{{ url_for('player', player_id=item.player_id) }}">{{ item.nickname }}</a></td>

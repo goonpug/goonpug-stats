@@ -36,6 +36,7 @@ app.config['SQLALCHEMY_DATABASE_URI'] = 'mysql://%s:%s@%s:%d/%s?charset=utf8' % 
     app.config['MYSQL_USER'], app.config['MYSQL_PASSWORD'],
     app.config['MYSQL_SERVER'], app.config['MYSQL_PORT'],
     app.config['MYSQL_DATABASE'],)
+app.config['SQLALCHEMY_POOL_RECYCLE'] = 7200
 
 # DB stuff
 db = SQLAlchemy(app)

@@ -160,7 +160,7 @@ def stats():
     for (mapname,) in maps:
         leader = Player.map_stats(mapname=mapname).order_by(db.desc('rws')).first()
         g.map_leaders.append((mapname, leader))
-    weapons = ['ak47', 'm4a1', 'awp', 'glock', 'p2000', 'p250', 'deagle', 'knife', 'taser']
+    weapons = ['ak47', 'm4a1', 'awp', 'glock', 'hkp2000', 'p250', 'deagle', 'knife', 'taser']
     g.weapon_leaders = []
     for weapon in weapons:
         leader = Player.weapon_kill_stats(weapon=weapon).order_by(db.desc('frags')).first()
