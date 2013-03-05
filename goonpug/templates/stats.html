@@ -61,11 +61,13 @@
                 </tr>
             </thead>
             {% for mapname, item in g.map_leaders %}
+            {% if item is not none %}
             <tr>
                 <td><a href="{{ url_for('stats_map', mapname=mapname) }}">{{ mapname }}</a></td>
                 <td><a href="{{ url_for('player', player_id=item.player_id) }}">{{ item.nickname }}</a></td>
                 <td>{{ "%.1f"|format(item.rws) }}</td>
             </tr>
+            {% endif %}
             {% endfor %}
             <tr>
                 <td colspan="3"><a href="#">Complete Leaders</a></td>

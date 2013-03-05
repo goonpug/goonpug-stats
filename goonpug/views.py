@@ -226,21 +226,7 @@ def stats_map(mapname='', page=1, sort_by='rws', sort_order='desc'):
 @app.route('/stats/weapon/<weapon>/sort/<sort_by>/order/<sort_order>/')
 @app.route('/stats/weapon/<weapon>/sort/<sort_by>/order/<sort_order>/<int:page>')
 def stats_weapon(weapon='', page=1, sort_by='frags', sort_order='desc'):
-    g.weapons = db.session.query(Frag.weapon).filter(
-        Frag.weapon.in_((
-            'p90',
-            'galilar',
-            'famas',
-            'ak47',
-            'm4a1',
-            'awp',
-            'glock',
-            'hkp2000',
-            'p250',
-            'deagle',
-            'knife',
-            'taser'
-        )).distinct().order_by('weapon')
+    g.weapons = db.session.query(Frag.weapon).distinct().order_by('weapon')
     if not weapon and g.weapons:
         (weapon,) = g.weapons[0]
     if sort_by == 'deaths':
