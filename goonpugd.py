@@ -2,12 +2,10 @@
 """GoonPUG-stats log handling daemon"""
 
 from __future__ import absolute_import, division
-import os
 import sys
 import argparse
 import multiprocessing
 import SocketServer
-import datetime
 import re
 import srcds.events.generic as generic_events
 import srcds.events.csgo as csgo_events
@@ -467,7 +465,7 @@ class GoonPugParser(object):
         if self.verbose:
             print unicode(event)
         steam_id = event.player.steam_id.id64()
-        player = db.session.query(Player).filter_by(steam_id=steam_id).first()
+        #player = db.session.query(Player).filter_by(steam_id=steam_id).first()
         if not steam_id in self.players:
             self.players[steam_id] = GoonPugPlayer(event.player.name,
                                                    event.player.uid,
@@ -525,8 +523,7 @@ class GoonPugLogHandler(SocketServer.DatagramRequestHandler):
         # for 'Remote'? Either way normal log entires are supposed to start
         # with 'L', but the UDP packets start with 'RL'
         data = data[5:].strip()
-        socket = self.request[1]
-        if not self.client_address in log_parser:
+        if not self.client_address in log_parsers:
             print u'Got new connection from {}'.format(self.client_address[0])
             parser = GoonPugParser(self.client_address,
                                    verbose=GoonPugLogHandler.verbose,
