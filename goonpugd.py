@@ -104,7 +104,6 @@ class GoonPugParser(object):
                 event = self.eventq.get(True, 5)
                 handler = self.event_handlers[type(event)]
                 handler(event)
-                self.eventq.task_done()
             except Empty:
                 pass
 
