@@ -16,12 +16,12 @@
 # along with GoonPUG.  If not, see <http://www.gnu.org/licenses/>.
 
 from __future__ import absolute_import
+import datetime
 from flask.ext.login import UserMixin
 from srcds.objects import SteamId
-from sqlalchemy import func, case, literal, not_, and_, or_
-from sqlalchemy.orm import aliased
+from sqlalchemy import func, case, not_, and_
 
-from . import app, db, metadata
+from . import db
 
 
 class Player(db.Model, UserMixin):
@@ -106,8 +106,9 @@ class Player(db.Model, UserMixin):
             Round,
             player_round_frags.c.round_id == Round.id
         ).join(CsgoMatch,
-            and_(Round.match_id == CsgoMatch.id, CsgoMatch.end_time != None)
-        ).group_by(player_round_frags.c.player_id, Round.match_id)
+               and_(Round.match_id == CsgoMatch.id,
+                    CsgoMatch.end_time is not None)
+               ).group_by(player_round_frags.c.player_id, Round.match_id)
         return query
 
     @classmethod
@@ -144,8 +145,9 @@ class Player(db.Model, UserMixin):
             Round,
             player_round_hits.c.round_id == Round.id
         ).join(CsgoMatch,
-            and_(Round.match_id == CsgoMatch.id, CsgoMatch.end_time != None)
-        ).group_by(player_round_hits.c.player_id, Round.match_id)
+               and_(Round.match_id == CsgoMatch.id,
+                    CsgoMatch.end_time is not None)
+               ).group_by(player_round_hits.c.player_id, Round.match_id)
         return query
 
     @classmethod
@@ -217,8 +219,10 @@ class Player(db.Model, UserMixin):
                     (PlayerRound.won_1v == 5, 1),
                 ], else_=0)
             ).label('won_1v5'),
-        ).select_from(PlayerRound).join(Round).join(CsgoMatch,
-            and_(Round.match_id == CsgoMatch.id, CsgoMatch.end_time != None)
+        ).select_from(PlayerRound).join(Round).join(
+            CsgoMatch,
+            and_(Round.match_id == CsgoMatch.id,
+                 CsgoMatch.end_time is not None)
         ).group_by(PlayerRound.player_id, Round.match_id).subquery()
         query = db.session.query(
             player_match_rounds,
@@ -233,12 +237,16 @@ class Player(db.Model, UserMixin):
             player_match_hits.c.headshots,
         ).outerjoin(
             player_match_frags,
-            and_(player_match_frags.c.player_id == player_match_rounds.c.player_id,
-                 player_match_frags.c.match_id == player_match_rounds.c.match_id)
+            and_(player_match_frags.c.player_id ==
+                 player_match_rounds.c.player_id,
+                 player_match_frags.c.match_id ==
+                 player_match_rounds.c.match_id)
         ).outerjoin(
             player_match_hits,
-            and_(player_match_hits.c.player_id == player_match_rounds.c.player_id,
-                 player_match_hits.c.match_id == player_match_rounds.c.match_id)
+            and_(player_match_hits.c.player_id ==
+                 player_match_rounds.c.player_id,
+                 player_match_hits.c.match_id ==
+                 player_match_rounds.c.match_id)
         )
         return query
 
@@ -259,7 +267,7 @@ class Player(db.Model, UserMixin):
             func.sum(player_match_stats.c.bomb_defused).label('bomb_defused'),
             func.sum(player_match_stats.c.rounds_won).label('rounds_won'),
             func.sum(player_match_stats.c.rounds_lost).label('rounds_lost'),
-            func.sum(player_match_stats.c.rounds_dropped)\
+            func.sum(player_match_stats.c.rounds_dropped)
                 .label('rounds_dropped'),
             (
                 func.sum(player_match_stats.c.rounds_won)
@@ -277,27 +285,27 @@ class Player(db.Model, UserMixin):
             func.sum(player_match_stats.c.k5).label('k5'),
             (
                 func.sum(player_match_stats.c.frags)
-                    / func.sum(player_match_stats.c.deaths)
+                / func.sum(player_match_stats.c.deaths)
             ).label('kdr'),
             (
                 func.sum(player_match_stats.c.headshots)
-                    / func.sum(player_match_stats.c.hits)
+                / func.sum(player_match_stats.c.hits)
             ).label('hsp'),
             (
                 func.sum(player_match_stats.c.damage)
-                    / (func.sum(player_match_stats.c.rounds_won)
-                        + func.sum(player_match_stats.c.rounds_lost))
+                / (func.sum(player_match_stats.c.rounds_won)
+                    + func.sum(player_match_stats.c.rounds_lost))
             ).label('adr'),
             (
                 func.sum(player_match_stats.c.frags)
-                    / (func.sum(player_match_stats.c.rounds_won)
-                        + func.sum(player_match_stats.c.rounds_lost))
+                / (func.sum(player_match_stats.c.rounds_won)
+                    + func.sum(player_match_stats.c.rounds_lost))
             ).label('fpr'),
             (
                 func.sum(player_match_stats.c.total_rws)
-                    / (func.sum(player_match_stats.c.rounds_won)
-                        + func.sum(player_match_stats.c.rounds_lost)
-                        + func.sum(player_match_stats.c.rounds_dropped))
+                / (func.sum(player_match_stats.c.rounds_won)
+                    + func.sum(player_match_stats.c.rounds_lost)
+                    + func.sum(player_match_stats.c.rounds_dropped))
             ).label('rws'),
         ).join(
             Player, player_match_stats.c.player_id == Player.id
@@ -305,8 +313,8 @@ class Player(db.Model, UserMixin):
         return query
 
     @classmethod
-    def overall_stats(cls, min_rounds=0):
-        query = cls.total_stats().group_by('player_id').having(
+    def overall_stats(cls, min_rounds=0, player_id=None):
+        query = cls.total_stats(player_id).group_by('player_id').having(
             'rounds_played >= %d' % min_rounds
         )
         return query
@@ -398,7 +406,8 @@ class Server(db.Model):
 
     @staticmethod
     def get_or_create(ip_address, port=27015):
-        server = Server.query.filter_by(ip_address=ip_address, port=port).first()
+        server = Server.query.filter_by(ip_address=ip_address,
+                                        port=port).first()
         if server is None:
             server = Server()
             server.ip_address = ip_address
@@ -408,10 +417,11 @@ class Server(db.Model):
 
 
 match_players = db.Table('match_players',
-    db.Column('player_id', db.Integer, db.ForeignKey('player.id')),
-    db.Column('match_id', db.Integer, db.ForeignKey('csgo_match.id')),
-    db.Column('team', db.SmallInteger),
-)
+                         db.Column('player_id', db.Integer,
+                                   db.ForeignKey('player.id')),
+                         db.Column('match_id', db.Integer,
+                                   db.ForeignKey('csgo_match.id')),
+                         db.Column('team', db.SmallInteger))
 
 
 class CsgoMatch(db.Model):
@@ -438,7 +448,8 @@ class CsgoMatch(db.Model):
     db.UniqueConstraint('server_id', 'start_time', name='uidx_server_match')
 
 
-team_players = db.Table('team_players',
+team_players = db.Table(
+    'team_players',
     db.Column('player_id', db.Integer, db.ForeignKey('player.id')),
     db.Column('team_id', db.Integer, db.ForeignKey('team.id')),
 )
@@ -506,7 +517,119 @@ class Round(db.Model):
     frags = db.relationship('Frag', backref='round',
                             cascade='all, delete-orphan')
     attacks = db.relationship('Attack', backref='round',
-                            cascade='all, delete-orphan')
+                              cascade='all, delete-orphan')
     players = db.relationship('Player', backref='rounds',
                               secondary=PlayerRound.__table__,
                               lazy="dynamic")
+
+
+class PlayerOverallStatsSummary(db.Model):
+
+    player_id = db.Column(db.Integer, db.ForeignKey('player.id'),
+                          primary_key=True)
+    nickname = db.Column(db.Unicode(128), default=u'')
+    frags = db.Column(db.Integer, default=0)
+    tks = db.Column(db.Integer, default=0)
+    assists = db.Column(db.Integer, default=0)
+    deaths = db.Column(db.Integer, default=0)
+    bomb_planted = db.Column(db.Integer, default=0)
+    bomb_defused = db.Column(db.Integer, default=0)
+    rounds_won = db.Column(db.Integer, default=0)
+    rounds_lost = db.Column(db.Integer, default=0)
+    rounds_dropped = db.Column(db.Integer, default=0)
+    rounds_played = db.Column(db.Integer, default=0)
+    won_1v1 = db.Column(db.Integer, default=0)
+    won_1v2 = db.Column(db.Integer, default=0)
+    won_1v3 = db.Column(db.Integer, default=0)
+    won_1v4 = db.Column(db.Integer, default=0)
+    won_1v5 = db.Column(db.Integer, default=0)
+    k1 = db.Column(db.Integer, default=0)
+    k2 = db.Column(db.Integer, default=0)
+    k3 = db.Column(db.Integer, default=0)
+    k4 = db.Column(db.Integer, default=0)
+    k5 = db.Column(db.Integer, default=0)
+    kdr = db.Column(db.Float, default=0.0)
+    hsp = db.Column(db.Float, default=0.0)
+    adr = db.Column(db.Float, default=0.0)
+    fpr = db.Column(db.Float, default=0.0)
+    rws = db.Column(db.Float, default=0.0)
+
+    @classmethod
+    def _update_rws(cls, player_id, day_range=30):
+        """Update the specified player's RWS
+
+        Parameters:
+            player_id: The player ID
+            day_range: An integer specifying the number of previous days'
+                matches to include in the RWS calculation.
+        """
+        today = datetime.datetime.now()
+        date_range_start = today - datetime.timedelta(days=day_range)
+        query = db.session.query(
+            PlayerRound.player_id,
+            func.sum(PlayerRound.rws).label('total_rws'),
+            func.count(PlayerRound.round_id).label('round_count')
+        ).select_from(
+            PlayerRound
+        ).join(
+            Round,
+        ).join(
+            CsgoMatch,
+            CsgoMatch.end_time >= date_range_start
+        ).filter(
+            PlayerRound.player_id == player_id,
+        ).group_by(PlayerRound.player_id)
+        result = query.first()
+        player_summary = cls.query.filter_by(player_id=player_id).first()
+        if not player_summary:
+            player_summary = PlayerOverallStatsSummary()
+            player_summary.player_id = player_id
+            db.session.add(player_summary)
+        if result:
+            player_summary.rws = result.total_rws / result.round_count
+        else:
+            player_summary.rws = 0.0
+        db.session.commit()
+
+    @classmethod
+    def _update_stats(cls, player_id):
+        player = Player.total_stats().filter_by(id=player_id).first()
+        player_summary = cls.query.filter_by(player_id=player_id).first()
+        if not player_summary:
+            player_summary = PlayerOverallStatsSummary()
+            player_summary.player_id = player_id
+            db.session.add(player_summary)
+        if player:
+            player_summary.nickname = player.nickname
+            player_summary.frags = player.frags
+            player_summary.tks = player.tks
+            player_summary.assists = player.assists
+            player_summary.deaths = player.deaths
+            player_summary.bomb_planted = player.bomb_planted
+            player_summary.bomb_defused = player.bomb_defused
+            player_summary.rounds_won = player.rounds_won
+            player_summary.rounds_lost = player.rounds_lost
+            player_summary.rounds_dropped = player.rounds_dropped
+            player_summary.rounds_played = player.rounds_played
+            player_summary.won_1v1 = player.won_1v1
+            player_summary.won_1v2 = player.won_1v2
+            player_summary.won_1v3 = player.won_1v3
+            player_summary.won_1v4 = player.won_1v4
+            player_summary.won_1v5 = player.won_1v5
+            player_summary.k1 = player.k1
+            player_summary.k2 = player.k2
+            player_summary.k3 = player.k3
+            player_summary.k4 = player.k4
+            player_summary.k5 = player.k5
+            player_summary.kdr = player.kdr
+            player_summary.hsp = player.hsp
+            player_summary.adr = player.adr
+            player_summary.fpr = player.fpr
+        db.session.commit()
+        cls._update_rws(player_id)
+
+    @classmethod
+    def _update_all_stats(cls):
+        players = db.session.query(Player.id).all()
+        for player in players:
+            cls._update_stats(player.id)
