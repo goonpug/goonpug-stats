@@ -26,7 +26,7 @@ from werkzeug.urls import url_encode
 from sqlalchemy.orm.exc import NoResultFound
 
 from . import app, db, oid, login_manager
-from .models import Frag, CsgoMatch, Player
+from .models import Frag, CsgoMatch, Player, PlayerOverallStatsSummary
 
 _steam_id_re = re.compile('steamcommunity.com/openid/id/(.*?)$')
 
@@ -137,7 +137,8 @@ def logout():
 def player(player_id=None):
     if player_id:
         g.player = Player.query.get(player_id)
-        query = Player.overall_stats().filter_by(id=player_id)
+        query = db.session.query(PlayerOverallStatsSummary) \
+            .filter_by(player_id=player_id)
         try:
             g.stats = query.one()
         except NoResultFound:
@@ -147,7 +148,8 @@ def player(player_id=None):
 
 @app.route('/stats/')
 def stats():
-    subquery = Player.overall_stats(min_rounds=75).subquery()
+    subquery = db.session.query(PlayerOverallStatsSummary).filter(
+        PlayerOverallStatsSummary.rounds_played >= 100).subquery()
     g.rws_leaders = db.session.query(
         subquery.c.nickname,
         subquery.c.player_id,
@@ -192,7 +194,8 @@ def stats():
 @app.route('/stats/player/sort/<sort_by>/order/<sort_order>/')
 @app.route('/stats/player/sort/<sort_by>/order/<sort_order>/<int:page>')
 def stats_player(page=1, sort_by='rws', sort_order='desc'):
-    query = Player.overall_stats(min_rounds=75)
+    query = db.session.query(PlayerOverallStatsSummary).filter(
+        PlayerOverallStatsSummary.rounds_played >= 100)
     per_page = 20
     if sort_order == 'asc':
         query = query.order_by(db.asc(sort_by))
