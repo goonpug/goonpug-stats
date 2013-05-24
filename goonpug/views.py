@@ -16,20 +16,20 @@
 # along with GoonPUG.  If not, see <http://www.gnu.org/licenses/>.
 
 from __future__ import absolute_import, division
-import re, urllib2
-from flask import g, session, json, flash, redirect, escape, render_template, \
+import re
+import urllib2
+from flask import g, session, json, flash, redirect, render_template, \
     request, url_for, Markup
 from flask.ext.login import login_user, logout_user
 from flask.ext.sqlalchemy import Pagination
 from werkzeug.urls import url_encode
-from sqlalchemy.exc import NoSuchTableError
 from sqlalchemy.orm.exc import NoResultFound
 
-from . import app, db, oid, login_manager, metadata
-from .models import Frag, CsgoMatch, Player, PlayerRound, Round, \
-    match_players
+from . import app, db, oid, login_manager
+from .models import Frag, CsgoMatch, Player
 
 _steam_id_re = re.compile('steamcommunity.com/openid/id/(.*?)$')
+
 
 def url_for_other_page(page):
     args = request.view_args.copy()
@@ -37,11 +37,13 @@ def url_for_other_page(page):
     return url_for(request.endpoint, **args)
 app.jinja_env.globals['url_for_other_page'] = url_for_other_page
 
+
 def url_for_other(**kwargs):
     args = request.view_args.copy()
     args.update(kwargs)
     return url_for(request.endpoint, **args)
 app.jinja_env.globals['url_for_other'] = url_for_other
+
 
 def sortable_th(display, title="", column_name=""):
     args = request.view_args.copy()
@@ -49,10 +51,10 @@ def sortable_th(display, title="", column_name=""):
         column_name = display.lower()
     sort_order = 'desc'
     ico = ''
-    if request.view_args.has_key('sort_by') \
+    if 'sort_by' in request.view_args \
             and column_name == request.view_args['sort_by']:
         ico = 'icon-chevron-down'
-        if request.view_args.has_key('sort_order') \
+        if 'sort_order' in request.view_args \
                 and request.view_args['sort_order'] == 'asc':
             sort_order = 'desc'
             ico = 'icon-chevron-up'
@@ -60,17 +62,21 @@ def sortable_th(display, title="", column_name=""):
             sort_order = 'asc'
     args['sort_by'] = column_name
     args['sort_order'] = sort_order
-    if args.has_key('page'):
+    if 'page' in args:
         args['page'] = 1
     url = url_for(request.endpoint, **args)
     return Markup('<th><a href="%s" rel="tooltip" title="%s">'
-                  '<i class="%s"></i> %s</a></th>'% (url, title, ico, display))
+                  '<i class="%s"></i> %s</a></th>'
+                  % (url, title, ico, display))
 app.jinja_env.globals['sortable_th'] = sortable_th
 
+
 def last_updated():
-    (last_updated,) = db.session.query(CsgoMatch.end_time).order_by(db.desc('end_time')).first()
+    (last_updated,) = db.session.query(CsgoMatch.end_time) \
+        .order_by(db.desc('end_time')).first()
     return last_updated.strftime(u'%Y-%m-%d %H:%M:%S %Z')
 app.jinja_env.globals['last_updated'] = last_updated
+
 
 def get_steam_userinfo(steam_id):
     options = {
@@ -82,13 +88,16 @@ def get_steam_userinfo(steam_id):
     retval = json.load(urllib2.urlopen(url))
     return retval['response']['players'][0] or {}
 
+
 @app.route('/')
 def index():
     return render_template('index.html')
 
+
 @login_manager.user_loader
 def load_user(user_id):
     return Player.query.get(int(user_id))
+
 
 @app.route('/login')
 @oid.loginhandler
@@ -96,6 +105,7 @@ def login():
     if g.user is not None and g.user.is_authenticated():
         return redirect(oid.get_next_url())
     return oid.try_login('http://steamcommunity.com/openid')
+
 
 @oid.after_login
 def create_or_login(resp):
@@ -108,17 +118,20 @@ def create_or_login(resp):
     flash(u'You are now logged in')
     return redirect(oid.get_next_url())
 
+
 @app.before_request
 def before_request():
     g.user = None
     if 'user_id' in session:
         g.user = Player.query.get(session['user_id'])
 
+
 @app.route('/logout')
 def logout():
     flash(u'You are now logged out')
     logout_user()
     return redirect(oid.get_next_url())
+
 
 @app.route('/player/<int:player_id>')
 def player(player_id=None):
@@ -130,6 +143,7 @@ def player(player_id=None):
         except NoResultFound:
             g.stats = None
     return render_template('player.html')
+
 
 @app.route('/stats/')
 def stats():
@@ -158,14 +172,18 @@ def stats():
     maps = db.session.query(CsgoMatch.map).distinct().order_by('map')
     g.map_leaders = []
     for (mapname,) in maps:
-        leader = Player.map_stats(mapname=mapname).order_by(db.desc('rws')).first()
+        leader = Player.map_stats(mapname=mapname) \
+            .order_by(db.desc('rws')).first()
         g.map_leaders.append((mapname, leader))
-    weapons = ['ak47', 'm4a1', 'awp', 'glock', 'hkp2000', 'p250', 'deagle', 'knife', 'taser']
+    weapons = ['ak47', 'm4a1', 'awp', 'glock', 'hkp2000', 'p250', 'deagle',
+               'knife', 'taser']
     g.weapon_leaders = []
     for weapon in weapons:
-        leader = Player.weapon_kill_stats(weapon=weapon).order_by(db.desc('frags')).first()
+        leader = Player.weapon_kill_stats(weapon=weapon) \
+            .order_by(db.desc('frags')).first()
         g.weapon_leaders.append((weapon, leader))
     return render_template('stats.html')
+
 
 @app.route('/stats/player/')
 @app.route('/stats/player/<int:page>')
@@ -184,6 +202,7 @@ def stats_player(page=1, sort_by='rws', sort_order='desc'):
     items = query.limit(per_page).offset((page - 1) * per_page).all()
     g.pagination = Pagination(query, page, per_page, total, items)
     return render_template('stats_player.html')
+
 
 @app.route('/stats/map/')
 @app.route('/stats/map/<int:page>')
@@ -213,6 +232,7 @@ def stats_map(mapname='', page=1, sort_by='rws', sort_order='desc'):
     g.mapname = mapname
     return render_template('stats_map.html')
 
+
 @app.route('/stats/weapon/')
 @app.route('/stats/weapon/<int:page>')
 @app.route('/stats/weapon/sort/<sort_by>/')
@@ -224,7 +244,8 @@ def stats_map(mapname='', page=1, sort_by='rws', sort_order='desc'):
 @app.route('/stats/weapon/<weapon>/sort/<sort_by>/')
 @app.route('/stats/weapon/<weapon>/sort/<sort_by>/<int:page>')
 @app.route('/stats/weapon/<weapon>/sort/<sort_by>/order/<sort_order>/')
-@app.route('/stats/weapon/<weapon>/sort/<sort_by>/order/<sort_order>/<int:page>')
+@app.route('/stats/weapon/<weapon>/sort/<sort_by>/order/<sort_order>/'
+           '<int:page>')
 def stats_weapon(weapon='', page=1, sort_by='frags', sort_order='desc'):
     g.weapons = db.session.query(Frag.weapon).distinct().order_by('weapon')
     if not weapon and g.weapons:

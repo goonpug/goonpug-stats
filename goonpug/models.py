@@ -18,10 +18,9 @@
 from __future__ import absolute_import
 from flask.ext.login import UserMixin
 from srcds.objects import SteamId
-from sqlalchemy import func, case, literal, not_, and_, or_
-from sqlalchemy.orm import aliased
+from sqlalchemy import func, case, not_, and_
 
-from . import app, db, metadata
+from . import db
 
 
 class Player(db.Model, UserMixin):
@@ -106,8 +105,9 @@ class Player(db.Model, UserMixin):
             Round,
             player_round_frags.c.round_id == Round.id
         ).join(CsgoMatch,
-            and_(Round.match_id == CsgoMatch.id, CsgoMatch.end_time != None)
-        ).group_by(player_round_frags.c.player_id, Round.match_id)
+               and_(Round.match_id == CsgoMatch.id,
+                    CsgoMatch.end_time is not None)
+               ).group_by(player_round_frags.c.player_id, Round.match_id)
         return query
 
     @classmethod
@@ -144,8 +144,9 @@ class Player(db.Model, UserMixin):
             Round,
             player_round_hits.c.round_id == Round.id
         ).join(CsgoMatch,
-            and_(Round.match_id == CsgoMatch.id, CsgoMatch.end_time != None)
-        ).group_by(player_round_hits.c.player_id, Round.match_id)
+               and_(Round.match_id == CsgoMatch.id,
+                    CsgoMatch.end_time is not None)
+               ).group_by(player_round_hits.c.player_id, Round.match_id)
         return query
 
     @classmethod
@@ -217,8 +218,10 @@ class Player(db.Model, UserMixin):
                     (PlayerRound.won_1v == 5, 1),
                 ], else_=0)
             ).label('won_1v5'),
-        ).select_from(PlayerRound).join(Round).join(CsgoMatch,
-            and_(Round.match_id == CsgoMatch.id, CsgoMatch.end_time != None)
+        ).select_from(PlayerRound).join(Round).join(
+            CsgoMatch,
+            and_(Round.match_id == CsgoMatch.id,
+                 CsgoMatch.end_time is not None)
         ).group_by(PlayerRound.player_id, Round.match_id).subquery()
         query = db.session.query(
             player_match_rounds,
@@ -233,12 +236,16 @@ class Player(db.Model, UserMixin):
             player_match_hits.c.headshots,
         ).outerjoin(
             player_match_frags,
-            and_(player_match_frags.c.player_id == player_match_rounds.c.player_id,
-                 player_match_frags.c.match_id == player_match_rounds.c.match_id)
+            and_(player_match_frags.c.player_id ==
+                 player_match_rounds.c.player_id,
+                 player_match_frags.c.match_id ==
+                 player_match_rounds.c.match_id)
         ).outerjoin(
             player_match_hits,
-            and_(player_match_hits.c.player_id == player_match_rounds.c.player_id,
-                 player_match_hits.c.match_id == player_match_rounds.c.match_id)
+            and_(player_match_hits.c.player_id ==
+                 player_match_rounds.c.player_id,
+                 player_match_hits.c.match_id ==
+                 player_match_rounds.c.match_id)
         )
         return query
 
@@ -259,7 +266,7 @@ class Player(db.Model, UserMixin):
             func.sum(player_match_stats.c.bomb_defused).label('bomb_defused'),
             func.sum(player_match_stats.c.rounds_won).label('rounds_won'),
             func.sum(player_match_stats.c.rounds_lost).label('rounds_lost'),
-            func.sum(player_match_stats.c.rounds_dropped)\
+            func.sum(player_match_stats.c.rounds_dropped)
                 .label('rounds_dropped'),
             (
                 func.sum(player_match_stats.c.rounds_won)
@@ -277,27 +284,27 @@ class Player(db.Model, UserMixin):
             func.sum(player_match_stats.c.k5).label('k5'),
             (
                 func.sum(player_match_stats.c.frags)
-                    / func.sum(player_match_stats.c.deaths)
+                / func.sum(player_match_stats.c.deaths)
             ).label('kdr'),
             (
                 func.sum(player_match_stats.c.headshots)
-                    / func.sum(player_match_stats.c.hits)
+                / func.sum(player_match_stats.c.hits)
             ).label('hsp'),
             (
                 func.sum(player_match_stats.c.damage)
-                    / (func.sum(player_match_stats.c.rounds_won)
-                        + func.sum(player_match_stats.c.rounds_lost))
+                / (func.sum(player_match_stats.c.rounds_won)
+                    + func.sum(player_match_stats.c.rounds_lost))
             ).label('adr'),
             (
                 func.sum(player_match_stats.c.frags)
-                    / (func.sum(player_match_stats.c.rounds_won)
-                        + func.sum(player_match_stats.c.rounds_lost))
+                / (func.sum(player_match_stats.c.rounds_won)
+                    + func.sum(player_match_stats.c.rounds_lost))
             ).label('fpr'),
             (
                 func.sum(player_match_stats.c.total_rws)
-                    / (func.sum(player_match_stats.c.rounds_won)
-                        + func.sum(player_match_stats.c.rounds_lost)
-                        + func.sum(player_match_stats.c.rounds_dropped))
+                / (func.sum(player_match_stats.c.rounds_won)
+                    + func.sum(player_match_stats.c.rounds_lost)
+                    + func.sum(player_match_stats.c.rounds_dropped))
             ).label('rws'),
         ).join(
             Player, player_match_stats.c.player_id == Player.id
@@ -398,7 +405,8 @@ class Server(db.Model):
 
     @staticmethod
     def get_or_create(ip_address, port=27015):
-        server = Server.query.filter_by(ip_address=ip_address, port=port).first()
+        server = Server.query.filter_by(ip_address=ip_address,
+                                        port=port).first()
         if server is None:
             server = Server()
             server.ip_address = ip_address
@@ -408,10 +416,11 @@ class Server(db.Model):
 
 
 match_players = db.Table('match_players',
-    db.Column('player_id', db.Integer, db.ForeignKey('player.id')),
-    db.Column('match_id', db.Integer, db.ForeignKey('csgo_match.id')),
-    db.Column('team', db.SmallInteger),
-)
+                         db.Column('player_id', db.Integer,
+                                   db.ForeignKey('player.id')),
+                         db.Column('match_id', db.Integer,
+                                   db.ForeignKey('csgo_match.id')),
+                         db.Column('team', db.SmallInteger))
 
 
 class CsgoMatch(db.Model):
@@ -438,7 +447,8 @@ class CsgoMatch(db.Model):
     db.UniqueConstraint('server_id', 'start_time', name='uidx_server_match')
 
 
-team_players = db.Table('team_players',
+team_players = db.Table(
+    'team_players',
     db.Column('player_id', db.Integer, db.ForeignKey('player.id')),
     db.Column('team_id', db.Integer, db.ForeignKey('team.id')),
 )
@@ -506,7 +516,7 @@ class Round(db.Model):
     frags = db.relationship('Frag', backref='round',
                             cascade='all, delete-orphan')
     attacks = db.relationship('Attack', backref='round',
-                            cascade='all, delete-orphan')
+                              cascade='all, delete-orphan')
     players = db.relationship('Player', backref='rounds',
                               secondary=PlayerRound.__table__,
                               lazy="dynamic")
