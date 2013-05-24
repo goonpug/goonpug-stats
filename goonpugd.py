@@ -15,7 +15,7 @@ from daemon import Daemon
 
 from goonpug import db
 from goonpug.models import CsgoMatch, Round, Player, PlayerRound, Frag, \
-    match_players, Server, Attack
+    match_players, Server, Attack, PlayerOverallStatsSummary
 
 
 class GoonPugPlayer(BasePlayer):
@@ -160,6 +160,7 @@ class GoonPugParser(object):
                 match_id=self.match.id,
                 team=CsgoMatch.TEAM_A,
             ))
+            PlayerOverallStatsSummary._update_stats(player.id)
         for steam_id in self.team_b:
             player = Player.query.filter_by(steam_id=steam_id).first()
             db.session.execute(match_players.insert().values(
@@ -167,6 +168,7 @@ class GoonPugParser(object):
                 match_id=self.match.id,
                 team=CsgoMatch.TEAM_A,
             ))
+            PlayerOverallStatsSummary._update_stats(player.id)
         self.team_a = None
         self.team_b = None
         self.match = None

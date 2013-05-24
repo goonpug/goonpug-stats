@@ -1,5 +1,8 @@
 *.py[cod]
 
+# Ignore local changes in config.py
+config.py
+
 # C extensions
 *.so
 
