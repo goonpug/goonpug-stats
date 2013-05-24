@@ -593,7 +593,7 @@ class PlayerOverallStatsSummary(db.Model):
 
     @classmethod
     def _update_stats(cls, player_id):
-        player = Player.total_stats().filter_by(id=player_id).first()
+        player = Player.total_stats(player_id).filter_by(id=player_id).first()
         player_summary = cls.query.filter_by(player_id=player_id).first()
         if not player_summary:
             player_summary = PlayerOverallStatsSummary()
