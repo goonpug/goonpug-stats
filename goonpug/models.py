@@ -575,9 +575,9 @@ class PlayerOverallStatsSummary(db.Model):
             Round,
         ).join(
             CsgoMatch,
-            CsgoMatch.end_time >= date_range_start
         ).filter(
             PlayerRound.player_id == player_id,
+            CsgoMatch.end_time >= date_range_start
         ).group_by(PlayerRound.player_id)
         result = query.first()
         player_summary = cls.query.filter_by(player_id=player_id).first()
