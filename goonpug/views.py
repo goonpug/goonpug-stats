@@ -151,7 +151,7 @@ def player_api(player_name=None):
     if steam_id:
         if isinstance(steam_id, str) or isinstance(steam_id, unicode):
             steam_id = objects.SteamId(steam_id).id64()
-        g.player = Player.query.filter(Player.steam_id=steam_id)
+        g.player = Player.query.filter(Player.steam_id==steam_id)
     query = db.session.query(PlayerOverallStatsSummary).filter_by(player_id=player_id)
     try:
         g.stats = query.one()
