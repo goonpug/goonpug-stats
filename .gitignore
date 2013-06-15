@@ -1,4 +1,5 @@
 *.py[cod]
+*sw[p]
 
 # Ignore local changes in config.py
 config.py

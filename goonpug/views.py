@@ -163,7 +163,6 @@ def player_api(player_name=None):
                'steamid'=player_steamid}
     return jsonify(payload)
 
-##########################################
 @app.route('/stats/')
 def stats():
     subquery = db.session.query(PlayerOverallStatsSummary).filter(
