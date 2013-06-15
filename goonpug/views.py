@@ -146,11 +146,12 @@ def player(player_id=None):
             g.stats = None
     return render_template('player.html')
 
-@app.route('/api/player/<str:player_steamid>', methods=['GET'])
+@app.route('/api/player/<str:steam_id>', methods=['GET'])
 def player_api(player_name=None):
-    if player_steamid:
-        player_steamid = objects.SteamId(player_steamid).id64()
-        g.player = Player.query.filter(Player.steam_id=player_steamid)
+    if steam_id:
+        if isinstance(steam_id, str) or isinstance(steam_id, unicode):
+            steam_id = objects.SteamId(steam_id).id64()
+        g.player = Player.query.filter(Player.steam_id=steam_id)
     query = db.session.query(PlayerOverallStatsSummary).filter_by(player_id=player_id)
     try:
         g.stats = query.one()
@@ -160,7 +161,7 @@ def player_api(player_name=None):
     payload = {'nickname'=g.stats.nickname,
                'rws'=g.stats.rws,
                'adr'=g.stats.adr,
-               'steamid'=player_steamid}
+               'steamid'=steam_id}
     return jsonify(payload)
 
 @app.route('/stats/')
