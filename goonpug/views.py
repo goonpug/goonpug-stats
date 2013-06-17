@@ -19,11 +19,12 @@ from __future__ import absolute_import, division
 import re
 import urllib2
 from flask import g, session, json, flash, redirect, render_template, \
-    request, url_for, Markup
+    request, url_for, Markup, make_response
 from flask.ext.login import login_user, logout_user
 from flask.ext.sqlalchemy import Pagination
 from werkzeug.urls import url_encode
 from sqlalchemy.orm.exc import NoResultFound
+from srcds import objects
 
 from . import app, db, oid, login_manager
 from .models import Frag, CsgoMatch, Player, PlayerOverallStatsSummary
@@ -145,6 +146,30 @@ def player(player_id=None):
             g.stats = None
     return render_template('player.html')
 
+@app.route('/api/player/<str:steam_id>', methods=['GET'])
+def player_api(steam_id=None):
+    # default json payload to be returned in the event of an error.
+
+    if steam_id:
+        try:
+            steam_id = objects.SteamId(steam_id).id64()
+        except ValueError:
+            return make_response(jsonify({ 'error': 'Invalid STEAM Id' }), 403)
+        g.player = Player.query.filter(Player.steam_id==steam_id)
+        query = db.session.query(PlayerOverallStatsSummary) \
+            .filter_by(player_id=player_id)
+    try:
+        g.stats = query.one()
+    except NoResultFound:
+        g.stats = None
+        return make_response(jsonify({ 'error': 'Invalid query' }), 403)
+
+    # if nothing goes wrong/causes exception, build the json payload
+    payload = {'nickname'=g.stats.nickname,
+               'rws'=g.stats.rws,
+               'adr'=g.stats.adr,
+               'steamid'=steam_id}
+    return jsonify(payload)
 
 @app.route('/stats/')
 def stats():
