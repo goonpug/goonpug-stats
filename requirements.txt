@@ -3,4 +3,5 @@ Flask-SQLAlchemy
 MySQL-python
 Flask-OpenID
 Flask-Login
+Flask-Restless
 pysrcds

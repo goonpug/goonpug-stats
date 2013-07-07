@@ -21,6 +21,7 @@ from flask import Flask
 from flask.ext.sqlalchemy import SQLAlchemy
 from flask.ext.login import LoginManager
 from flask.ext.openid import OpenID
+from flask.ext.restless import APIManager
 from openid.fetchers import setDefaultFetcher, Urllib2Fetcher
 
 
@@ -49,5 +50,7 @@ login_manager = LoginManager()
 login_manager.setup_app(app)
 setDefaultFetcher(Urllib2Fetcher())
 oid = OpenID(app)
+
+manager = APIManager(app, flask_sqlalchemy_db=db)
 
 from . import models, views
