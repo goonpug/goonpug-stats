@@ -146,30 +146,6 @@ def player(player_id=None):
             g.stats = None
     return render_template('player.html')
 
-@app.route('/api/player/<str:steam_id>', methods=['GET'])
-def player_api(steam_id=None):
-    # default json payload to be returned in the event of an error.
-
-    if steam_id:
-        try:
-            steam_id = objects.SteamId(steam_id).id64()
-        except ValueError:
-            return make_response(jsonify({ 'error': 'Invalid STEAM Id' }), 403)
-        g.player = Player.query.filter(Player.steam_id==steam_id)
-        query = db.session.query(PlayerOverallStatsSummary) \
-            .filter_by(player_id=player_id)
-    try:
-        g.stats = query.one()
-    except NoResultFound:
-        g.stats = None
-        return make_response(jsonify({ 'error': 'Invalid query' }), 403)
-
-    # if nothing goes wrong/causes exception, build the json payload
-    payload = {'nickname'=g.stats.nickname,
-               'rws'=g.stats.rws,
-               'adr'=g.stats.adr,
-               'steamid'=steam_id}
-    return jsonify(payload)
 
 @app.route('/stats/')
 def stats():
