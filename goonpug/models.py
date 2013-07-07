@@ -21,7 +21,7 @@ from flask.ext.login import UserMixin
 from srcds.objects import SteamId
 from sqlalchemy import func, case, not_, and_
 
-from . import db
+from . import db, manager
 
 
 class Player(db.Model, UserMixin):
@@ -392,6 +392,11 @@ class Player(db.Model, UserMixin):
         )
         return query.filter(deaths_query.c.weapon == weapon)
 
+    def average_rws(self):
+        summary = db.session.query(PlayerOverallStatsSummary).filter_by(
+            player_id=self.id).first()
+        return summary.rws
+
 
 class Server(db.Model):
 
@@ -575,9 +580,9 @@ class PlayerOverallStatsSummary(db.Model):
             Round,
         ).join(
             CsgoMatch,
-            CsgoMatch.end_time >= date_range_start
         ).filter(
             PlayerRound.player_id == player_id,
+            CsgoMatch.end_time >= date_range_start
         ).group_by(PlayerRound.player_id)
         result = query.first()
         player_summary = cls.query.filter_by(player_id=player_id).first()
@@ -593,7 +598,7 @@ class PlayerOverallStatsSummary(db.Model):
 
     @classmethod
     def _update_stats(cls, player_id):
-        player = Player.total_stats().filter_by(id=player_id).first()
+        player = Player.total_stats(player_id).filter_by(id=player_id).first()
         player_summary = cls.query.filter_by(player_id=player_id).first()
         if not player_summary:
             player_summary = PlayerOverallStatsSummary()
@@ -633,3 +638,8 @@ class PlayerOverallStatsSummary(db.Model):
         players = db.session.query(Player.id).all()
         for player in players:
             cls._update_stats(player.id)
+
+
+manager.create_api(Player, methods=['GET'],
+                   include_columns=['nickname', 'steam_id'],
+                   include_methods=['average_rws'])
