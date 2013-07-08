@@ -398,7 +398,7 @@ class Player(db.Model, UserMixin):
         return summary.rws
 
     def auth_id(self):
-        return unicode(SteamId(self.steam_id))
+        return SteamId.id64_to_str(self.steam_id)
 
 
 class Server(db.Model):
