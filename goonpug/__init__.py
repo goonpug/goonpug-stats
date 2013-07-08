@@ -53,4 +53,4 @@ oid = OpenID(app)
 
 manager = APIManager(app, flask_sqlalchemy_db=db)
 
-from . import models, views
+from . import models, views, api

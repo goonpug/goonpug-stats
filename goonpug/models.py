@@ -21,7 +21,7 @@ from flask.ext.login import UserMixin
 from srcds.objects import SteamId
 from sqlalchemy import func, case, not_, and_
 
-from . import db, manager
+from . import db
 
 
 class Player(db.Model, UserMixin):
@@ -397,6 +397,9 @@ class Player(db.Model, UserMixin):
             player_id=self.id).first()
         return summary.rws
 
+    def auth_id(self):
+        return unicode(SteamId(self.steam_id))
+
 
 class Server(db.Model):
 
@@ -638,8 +641,3 @@ class PlayerOverallStatsSummary(db.Model):
         players = db.session.query(Player.id).all()
         for player in players:
             cls._update_stats(player.id)
-
-
-manager.create_api(Player, methods=['GET'],
-                   include_columns=['nickname', 'steam_id'],
-                   include_methods=['average_rws'])
